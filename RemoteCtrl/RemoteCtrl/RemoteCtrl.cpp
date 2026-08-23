@@ -37,14 +37,13 @@ int main()
             // TODO: 在此处为应用程序的行为编写代码。
 
             CServerSocket* pserver = CServerSocket::getInstance();
-
-            while (CServerSocket::getInstance()!=NULL) {
-                int count = 0;
+            int count = 0;
                 if (pserver->InitSocket() == false) {
                     MessageBox(NULL, _T("网络初始化异常，未能成功"),
                         _T("网络初始化失败"), MB_OK | MB_ICONERROR);
                     exit(0);
                 }
+            while (CServerSocket::getInstance()!=NULL) {
                 if (pserver->AcceptClient() == false) {
                     if (count >= 3) {
                         MessageBox(NULL, _T("多次无法正常接入用户，结束程序！"),
@@ -52,6 +51,7 @@ int main()
                         exit(0);
                     }
                     MessageBox(NULL, _T("无法连接用户"), _T("接入用户失败"), MB_OK | MB_ICONERROR);
+                    count++;
                 }
 
                 int ret = pserver->DealCommand();
