@@ -1,2 +1,17 @@
 .vs/
 */.vs/
+# Visual Studio 编译与临时文件
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.ilk
+*.pch
+*.pdb
+*.obj
+*.exe
+*.log
+*.tlog
+*.idb
+*.vsidx
+.vs/
