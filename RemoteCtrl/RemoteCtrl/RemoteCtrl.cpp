@@ -8,6 +8,12 @@
 #include <stdio.h>
 #include <io.h>
 #include<list>
+#include<atlimage.h>
+
+#include"direct.h"
+#ifdef _DEBUG
+#define new DEBUG_NEW
+#endif
 typedef struct file_info{
     file_info() {
         IsInvalid = false;
@@ -20,11 +26,6 @@ typedef struct file_info{
     bool HasNext;//是否还有后续
     char szFileName[256];//文件名
 }FILEINFO,*PFILEINFO;
-#include"direct.h"
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
-
 
 
 // 唯一的应用程序对象123
@@ -221,6 +222,41 @@ int  MouseEvent() {
         return 0;
 
 }
+
+int SendScreen(){
+        
+    CImage screen;
+    HDC hScreen = ::GetDC(NULL);
+    int nBitPerPixel = GetDeviceCaps(hScreen,BITSPIXEL);
+    int nWidth = GetDeviceCaps(hScreen,HORZRES);
+    int nHeight = GetDeviceCaps(hScreen,VERTRES);
+    screen.Create(nWidth, nHeight, nBitPerPixel);
+    BitBlt(screen.GetDC(), 0, 0, 1920, 1020, hScreen, 0, 0, SRCCOPY);
+    ReleaseDC(NULL, hScreen);
+    HGLOBAL hMem=GlobalAlloc(GMEM_MOVEABLE, 0);
+    if (hMem == NULL)return -1;
+    IStream* pStream=NULL;
+    HRESULT ret=CreateStreamOnHGlobal(hMem, true, &pStream);
+    if (ret == S_OK) {
+        screen.Save(pStream, Gdiplus::ImageFormatPNG);
+        LARGE_INTEGER bg = { 0 };
+        pStream->Seek(bg,STREAM_SEEK_SET,NULL);
+        PBYTE pData=(PBYTE)GlobalLock(hMem);
+        size_t nSize = GlobalSize(hMem);
+        CPacket pack(6, pData,nSize);
+        GlobalUnlock(hMem);
+
+       
+    }
+    pStream->Release();
+    GlobalFree(hMem);
+    //screen.Save(_T("test2020.png"),Gdiplus::ImageFormatPNG);
+    //screen.Save(_T("test2020.jpg"), Gdiplus::ImageFormatJPEG);
+    screen.ReleaseDC();
+  
+    return 0;
+
+}
 int main()
 {
     int nRetCode = 0;
@@ -262,7 +298,7 @@ int main()
 
             //}
 
-            int nCmd = 1;
+            int nCmd = 6;
 
             switch (nCmd) {
             case 1://查看磁盘分区
@@ -281,8 +317,13 @@ int main()
              case 5://鼠标操作
                MouseEvent();
                break;
+             case 6://发送屏幕内容
+                 SendScreen();
+                 break;
+            default: 
+                break;
             }
-
+            
         }
     }
     else
