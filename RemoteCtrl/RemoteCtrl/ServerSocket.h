@@ -6,6 +6,19 @@ class CPacket {
 public:
 
 	CPacket():sHead(0),nLength(0),sCmd(0),sSum(0) {}
+
+	CPacket(WORD nCmd, const BYTE* pData, size_t nSize) {
+		sHead = 0xFEFF;
+		nLength = nSize + 4;
+		sCmd = nCmd;
+		strData.resize(nSize);
+		memcpy((void*)strData.c_str(),pData,nSize);
+
+		sSum = 0;
+		for (size_t j = 0; j < strData.size(); j++) {
+			sSum += BYTE(strData[j]) & 0xFF;
+		}
+	}
 	CPacket(const CPacket& pack) {
 		sHead = pack.sHead;
 		nLength = pack.nLength;
@@ -62,6 +75,19 @@ public:
 		strData = pack.strData;
 		sSum = pack.sSum;
 	}
+	int Size() {
+		return nLength + 6;
+	}
+	const char* Data() {
+		strOut.resize(nLength + 6);
+		BYTE* pData = (BYTE*)strOut.c_str();
+		*(WORD*)pData = sHead; pData += 2;
+		*(DWORD*)(pData) = nLength; pData += 4;
+		*(WORD*)pData = sCmd; pData += 2;
+		memcpy(pData,strData.c_str(),strData.size()); pData += strData.size();
+		*(WORD*)pData = sSum;
+		return strOut.c_str();
+	}
 public:
 	WORD sHead;//包头
 	DWORD nLength;//包长度
@@ -69,6 +95,7 @@ public:
 	std::string strData;//包数据
 	WORD sSum;//和校验
 
+	std::string strOut;//整个包数据
 };
 
 
@@ -138,6 +165,10 @@ public:
 	bool Send(const char* pData, size_t nSize)
 	{
 		return send(m_client, pData, nSize, 0) > 0;
+	}
+	bool Send(CPacket& pack){
+		if (m_client == -1)return false;
+		return send(m_client, pack.Data(), pack.Size(), 0);
 	}
 private:
 
