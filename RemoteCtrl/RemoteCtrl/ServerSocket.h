@@ -150,6 +150,7 @@ public:
 		sockaddr_in client_addr;
 		int cli_size = sizeof(client_addr);
 		m_client = accept(m_sock,(sockaddr*)&client_addr,&cli_size);
+		TRACE("m_client=%d\r\r",m_client);
 		if (m_client == -1)return false;
 
 		return true;
@@ -159,6 +160,9 @@ public:
 		if (m_client == -1)return false;
 		//char buffer[1024] = "";
 		char* buffer = new char[BUFFER_SIZE];
+		if (buffer == NULL) {
+			TRACE("ÄÚ´æ²»×ã£¡£¡\r\r");
+		}
 		memset(buffer, 0, BUFFER_SIZE);
 
 		size_t index = 0;
@@ -167,16 +171,21 @@ public:
 			size_t len = recv(m_client, buffer+index, BUFFER_SIZE -index, 0);
 			if (len <= 0)
 			{
+				delete[]buffer;
 				return -1;
 			}
+			TRACE("recv len %d\r\n", len);
 			index += len;
 			m_packet=CPacket((BYTE*)buffer, len);
 			if (len > 0) {
 				memmove(buffer,buffer+len, BUFFER_SIZE-len);
 				index -= len;
+				delete[]buffer;
 				return m_packet.sCmd;
 			}
 		}
+		delete[]buffer;
+		return -1;
 	}
 	bool Send(const char* pData, size_t nSize)
 	{
@@ -200,6 +209,13 @@ public:
 			return true;
 		}
 		return false;
+	}
+	CPacket& GetPacket() {
+		return m_packet;
+	}
+	void CloseClient() {
+		closesocket(m_client);
+		m_client = INVALID_SOCKET;
 	}
 private:
 

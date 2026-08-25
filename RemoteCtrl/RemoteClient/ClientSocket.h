@@ -115,20 +115,9 @@ typedef struct MouseEvent {
 	WORD nButton;//左键，中键，右键
 	POINT ptXY;//坐标
 }MOUSEEV, * PMOUSEEV;
+#include<vector>
+std::string GetErrInfo(int wsaErrCode);
 
-std::string GetErrorInfo(int wsaErrCode) {
-	std::string ret;
-	LPVOID lpMsgBuf = NULL;
-	FormatMessage(
-		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
-		NULL,
-		wsaErrCode,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR)&lpMsgBuf, 0, NULL);
-	ret = (char*)lpMsgBuf;
-	LocalFree(lpMsgBuf);
-	return ret;
-}
 class ClientSocket
 {
 public:
@@ -139,7 +128,8 @@ public:
 		return m_instance;
 	}
 	bool InitSocket(const std::string& strIPAddress) {
-
+		if (m_sock != INVALID_SOCKET)CloseSocket();
+		m_sock = socket(PF_INET,SOCK_STREAM,0);
 		if (m_sock == -1) return false;
 		sockaddr_in serv_addr;
 
@@ -155,7 +145,7 @@ public:
 		if (ret == -1)
 		{
 			AfxMessageBox("连接失败！！");
-			TRACE("连接失败：%d %s\r\r",WSAGetLastError(), GetErrorInfo(WSAGetLastError()).c_str());
+			TRACE("连接失败：%d %s\r\r",WSAGetLastError(), GetErrInfo(WSAGetLastError()).c_str());
 			return false;
 		}
 
@@ -167,7 +157,7 @@ public:
 	int  DealCommand() {
 		if (m_sock == -1)return false;
 		//char buffer[1024] = "";
-		char* buffer = new char[BUFFER_SIZE];
+		char* buffer = m_buffer.data();
 		memset(buffer, 0, BUFFER_SIZE);
 
 		size_t index = 0;
@@ -193,6 +183,7 @@ public:
 		return send(m_sock, pData, nSize, 0) > 0;
 	}
 	bool Send(CPacket& pack) {
+		TRACE("m_sock=%d\r\n",m_sock);
 		if (m_sock == -1)return false;
 		return send(m_sock, pack.Data(), pack.Size(), 0);
 	}
@@ -211,8 +202,15 @@ public:
 		}
 		return false;
 	}
+	CPacket& GetPacket() {
+		return m_packet;
+	}
+	void CloseSocket() {
+		closesocket(m_sock);
+		m_sock = INVALID_SOCKET;
+	}
 private:
-
+	std::vector<char>m_buffer;
 	SOCKET m_sock;
 	CPacket m_packet;
 	ClientSocket& operator=(const ClientSocket& ss) {}
@@ -227,7 +225,7 @@ private:
 			exit(0);
 		}
 
-		m_sock = socket(PF_INET, SOCK_STREAM, 0);
+		m_buffer.resize(BUFFER_SIZE);
 	}
 	~ClientSocket() {
 
