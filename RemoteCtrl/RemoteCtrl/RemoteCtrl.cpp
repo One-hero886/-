@@ -9,23 +9,12 @@
 #include <io.h>
 #include<list>
 #include<atlimage.h>
-
+#include< io.h >
 #include"direct.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
-typedef struct file_info{
-    file_info() {
-        IsInvalid = false;
-        IsDirectory = -1;
-        HasNext = true;
-        memset(szFileName, 0, sizeof(szFileName));
-    }
-    bool IsInvalid;//是否有效
-    bool IsDirectory;//是否为目录
-    bool HasNext;//是否还有后续
-    char szFileName[256];//文件名
-}FILEINFO,*PFILEINFO;
+
 
 
 // 唯一的应用程序对象123
@@ -34,6 +23,18 @@ CWinApp theApp;
 
 using namespace std;
 
+void Dump(BYTE* pData, size_t nSize) {
+    std::string strOut;
+    for (size_t i = 0; i < nSize; i++) {
+        char buf[8] = "";
+        if (i > 0 && (i % 16 == 0))strOut += "\n";
+        snprintf(buf, sizeof(buf), "%02X ", pData[i] & 0xFF);
+		strOut += buf;
+        
+    }
+	strOut += "\n";
+    OutputDebugStringA(strOut.c_str());
+}
 int MakeDriverInfo() {
     std::string result;
 
@@ -59,12 +60,9 @@ int MakeDirectoryInfo() {
         OutputDebugString(_T("当前的命令，不是获取文件列表，命令解析错误"));
         return -1;
     }
+    TRACE("%s\r\n", strPath.c_str());
     if (_chdir(strPath.c_str()) != 0) {
         FILEINFO finfo;
-        finfo.IsInvalid = true;
-        finfo.IsDirectory = true;
-        finfo.HasNext = false;
-        memcpy(finfo.szFileName,strPath.c_str(),strPath.size());
         CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
         CServerSocket::getInstance()->Send(pack);
         //lstFileInfos.push_back(finfo);
@@ -72,15 +70,20 @@ int MakeDirectoryInfo() {
         return -2;
     }
     _finddata_t fdata;
-    int hfind = 0;
+    intptr_t hfind = 0;
     if ((hfind=_findfirst("*", &fdata)) == -1) {
         OutputDebugString(_T("没有找到任何文件！！"));
+        FILEINFO finfo;
+        finfo.HasNext = false;
+        CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
+        CServerSocket::getInstance()->Send(pack);
         return -3;
     }
     do {
         FILEINFO finfo;
         finfo.IsDirectory = (fdata.attrib & _A_SUBDIR) != 0;
         memcpy(finfo.szFileName,fdata.name,strlen(fdata.name));
+        TRACE("%s\r\n",finfo.szFileName);
         CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
         CServerSocket::getInstance()->Send(pack);
         //lstFileInfos.push_back(finfo);
@@ -363,8 +366,8 @@ int ExcuteCommand(int nCmd){
     return ret;
 }
 int main()
-{
-    int nRetCode = 0;
+ {
+     int nRetCode = 0;
 
     HMODULE hModule = ::GetModuleHandle(nullptr);
 

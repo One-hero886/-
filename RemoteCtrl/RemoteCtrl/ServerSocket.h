@@ -1,7 +1,19 @@
 #pragma once
 #include "pch.h"
 #include "framework.h"
-
+void Dump(BYTE* pData, size_t nSize);
+typedef struct file_info {
+	file_info() {
+		IsInvalid = false;
+		IsDirectory = -1;
+		HasNext = true;
+		memset(szFileName, 0, sizeof(szFileName));
+	}
+	bool IsInvalid;//是否有效
+	bool IsDirectory;//是否为目录
+	bool HasNext;//是否还有后续
+	char szFileName[256];//文件名
+}FILEINFO, * PFILEINFO;
 class CPacket {
 public:
 
@@ -193,6 +205,7 @@ public:
 	}
 	bool Send(CPacket& pack){
 		if (m_client == -1)return false;
+		Dump((BYTE*)pack.Data(), pack.Size());
 		return send(m_client, pack.Data(), pack.Size(), 0);
 	}
 
