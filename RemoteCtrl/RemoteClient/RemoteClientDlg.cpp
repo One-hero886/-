@@ -218,4 +218,9 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 		}
 		dr += drivers[i];
 	}
+	if (!dr.empty()) {
+		dr += ":";
+		m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+		dr.clear();
+	}
 }

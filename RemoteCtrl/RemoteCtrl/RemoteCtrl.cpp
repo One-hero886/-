@@ -41,8 +41,9 @@ int MakeDriverInfo() {
         if (_chdrive(i) == 0) {
             if (result.size() > 0) {
                 result += ',';
-                result += 'A' + i - 1;
+             
             }
+            result += 'A' + i - 1;
         }
     }
     CPacket pack(1, (BYTE*)result.c_str(), result.size());
