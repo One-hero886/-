@@ -57,7 +57,7 @@ int MakeDirectoryInfo() {
     std::string strPath;
     //std::list<FILEINFO> lstFileInfos;
     if (CServerSocket::getInstance()->GetFilePath(strPath) == false) {
-        TRACE(">>> [服务端错误] 不是获取文件列表命令，解析失败\n");
+       // TRACE(">>> [服务端错误] 不是获取文件列表命令，解析失败\n");
         OutputDebugString(_T("当前的命令，不是获取文件列表，命令解析错误"));
         return -1;
     }

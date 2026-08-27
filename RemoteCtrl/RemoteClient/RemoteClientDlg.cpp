@@ -384,6 +384,10 @@ CString CRemoteClientDlg::GetPath(HTREEITEM hTree) {
 		}
 		hTree = m_Tree.GetParentItem(hTree);
 	}
+	if (strPath.GetLength() == 2 && strPath.GetAt(1) == _T(':'))
+	{
+		strPath += _T("\\");
+	}
 	return strPath; // 拼接结果示例: "D:\KEIL5"
 
 }
@@ -417,22 +421,23 @@ void CRemoteClientDlg::OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
 
 void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 {
-	//LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
-	//// TODO: 在此添加控件通知处理程序代码
-	//*pResult = 0;
-	//CPoint ptMouse,ptList;
-	//GetCursorPos(&ptMouse);
-	//m_List.ScreenToClient(&ptList);
-	//int ListSelected = m_List.HitTest(ptMouse, 0);
-	//if (ListSelected <0) {
-	//	TRACE(_T("[调试] HitTest 未命中任何节点！\n"));
-	//	return;
-	//}
+	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+	// TODO: 在此添加控件通知处理程序代码
+	*pResult = 0;
+	CPoint ptMouse,ptList;
+	GetCursorPos(&ptMouse);
+	ptList = ptMouse;
+	m_List.ScreenToClient(&ptList);
+	int ListSelected = m_List.HitTest(ptList, 0);
+	if (ListSelected <0) {
+		TRACE(_T("[调试] HitTest 未命中任何节点！\n"));
+		return;
+	}
 
-	//CMenu menu;
-	//menu.LoadMenu(IDR_MENU_RCLICK);
-	//CMenu* pPupup = menu.GetSubMenu(0);
-	//if (pPupup != NULL) {
-	//	pPupup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, ptMouse.x, ptMouse.y, this);
-	//}
+	CMenu menu;
+	menu.LoadMenu(IDR_MENU_RCLICK);
+	CMenu* pPupup = menu.GetSubMenu(0);
+	if (pPupup != NULL) {
+		pPupup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, ptMouse.x, ptMouse.y, this);
+	}
 }
