@@ -23,12 +23,18 @@ public:
 private:
 	void LoadFileInfo();
 	void LoadFileInfo1();
+	void LoadFileCurrent();
 	CString GetPath(HTREEITEM hTree);
 	void DeleteTreeChildrenItem(HTREEITEM hTree);
 	//1.查看磁盘分区 
 	// 2.查看指定目录下文件
 	// 3.打开文件 
 	// 4.下载文件
+	// 5.鼠标操作
+	// 6.发送屏幕内容
+	// 7.锁机
+	// 8.解锁机
+	// 9.删除文件
 	//返回值是命令
 	int SendCommandPacket(int nCmd,bool bAutoClose=true, BYTE* pData = NULL, size_t nLength = 0);
 	// 实现

@@ -4,6 +4,10 @@
 // 但是，如果此处列出的文件中的任何一个在生成之间有更新，它们全部都将被重新编译。
 // 请勿在此处添加要频繁更新的文件，这将使得性能优势无效。
 
+#pragma warning(disable: 4996)
+#ifndef _AFXDLL
+#define _AFXDLL
+#endif
 #ifndef PCH_H
 #define PCH_H
 

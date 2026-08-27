@@ -6,7 +6,9 @@
 
 #ifndef PCH_H
 #define PCH_H
-
+#ifndef _AFXDLL
+#define _AFXDLL
+#endif
 // 添加要在此处预编译的标头
 #include "framework.h"
 

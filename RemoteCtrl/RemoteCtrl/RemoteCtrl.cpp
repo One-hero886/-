@@ -344,6 +344,27 @@ int TestConnect() {
     TRACE("Send ret %d\r\n", ret);
     return 0;
 }
+int DeleteLocalFile() {
+	std::string strPath;
+	CServerSocket::getInstance()->GetFilePath(strPath);
+	//TCHAR sPath[MAX_PATH] =_T("");
+    //mbstowcs(sPath,strPath.c_str(),strPath.size());
+
+    wchar_t szPath[MAX_PATH] = { 0 };
+    size_t converted = 0;
+    mbstowcs_s(&converted, szPath, MAX_PATH, strPath.c_str(), _TRUNCATE);//中文容易乱码
+    DeleteFileW(szPath);
+
+	//MultiByteToWideChar(CP_ACP, 0, strPath.c_str(), strPath.size(),
+    //    szPath, sizeof(sPath)/sizeof(TCHAR));
+    //DeleteFileA(szPath);
+
+    CPacket pack(9, NULL, 0);
+    bool ret = CServerSocket::getInstance()->Send(pack);
+    TRACE("Send ret %d\r\n", ret);
+    return 0;
+
+}
 int ExcuteCommand(int nCmd){
     int ret = 0;
 
@@ -373,12 +394,16 @@ int ExcuteCommand(int nCmd){
     case 8:
         ret = UnlockMachine();
         break;
+    case 9:
+        ret = DeleteLocalFile();
+        break;
     case 1981:
         ret = TestConnect();
         break;
     }
     return ret;
 }
+
 int main()
  {
      int nRetCode = 0;
