@@ -97,6 +97,7 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BTN_FILEINFO, &CRemoteClientDlg::OnBnClickedBtnFileinfo)
 	ON_NOTIFY(NM_DBLCLK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMDblclkTreeDir)
 	ON_NOTIFY(NM_CLICK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMClickTreeDir)
+	ON_NOTIFY(NM_RCLICK, IDC_LIST_FILE, &CRemoteClientDlg::OnNMRClickListFile)
 END_MESSAGE_MAP()
 
 
@@ -403,7 +404,7 @@ void CRemoteClientDlg::OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
 	// TODO: 在此添加控件通知处理程序代码
 	*pResult = 0;
 	//LoadFileInfo();
-	LoadFileInfo();
+	LoadFileInfo1();
 }
 
 void CRemoteClientDlg::OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
@@ -411,5 +412,27 @@ void CRemoteClientDlg::OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
 	// TODO: 在此添加控件通知处理程序代码
 	*pResult = 0;
 	//LoadFileInfo();
-	LoadFileInfo();
+	LoadFileInfo1();
+}
+
+void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	//LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+	//// TODO: 在此添加控件通知处理程序代码
+	//*pResult = 0;
+	//CPoint ptMouse,ptList;
+	//GetCursorPos(&ptMouse);
+	//m_List.ScreenToClient(&ptList);
+	//int ListSelected = m_List.HitTest(ptMouse, 0);
+	//if (ListSelected <0) {
+	//	TRACE(_T("[调试] HitTest 未命中任何节点！\n"));
+	//	return;
+	//}
+
+	//CMenu menu;
+	//menu.LoadMenu(IDR_MENU_RCLICK);
+	//CMenu* pPupup = menu.GetSubMenu(0);
+	//if (pPupup != NULL) {
+	//	pPupup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, ptMouse.x, ptMouse.y, this);
+	//}
 }

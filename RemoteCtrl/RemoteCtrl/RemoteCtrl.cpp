@@ -94,7 +94,7 @@ int MakeDirectoryInfo() {
         memcpy(finfo.szFileName,fdata.name,strlen(fdata.name));
         nCount++;
        // TRACE(">>> [服务端找到并发送第 %d 项] fdata.name: [%s] | finfo.szFileName: [%s] | IsDir: %d\n",
-            nCount, fdata.name, finfo.szFileName, finfo.IsDirectory);
+          //  nCount, fdata.name, finfo.szFileName, finfo.IsDirectory);
         TRACE("%s\r\n",finfo.szFileName);
         CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
         CServerSocket::getInstance()->Send(pack);

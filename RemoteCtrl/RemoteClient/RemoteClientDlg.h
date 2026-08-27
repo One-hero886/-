@@ -53,4 +53,5 @@ public:
 	afx_msg void OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
 	// 显示文件
 	CListCtrl m_List;
+	afx_msg void OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult);
 };
