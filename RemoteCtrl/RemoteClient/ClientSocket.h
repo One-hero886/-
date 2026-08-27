@@ -2,6 +2,20 @@
 #include "pch.h"
 #include "framework.h"
 #include <string>
+#pragma pack(push, 1)
+typedef struct file_info {
+	file_info() {
+		IsInvalid = false;
+		IsDirectory = -1;
+		HasNext = true;
+		memset(szFileName, 0, sizeof(szFileName));
+	}
+	bool IsInvalid;//是否有效
+	bool IsDirectory;//是否为目录
+	bool HasNext;//是否还有后续
+	char szFileName[256];//文件名
+}FILEINFO, * PFILEINFO;
+#pragma pack(pop)
 class CPacket {
 public:
 
@@ -118,18 +132,6 @@ typedef struct MouseEvent {
 #include<vector>
 std::string GetErrInfo(int wsaErrCode);
 
-typedef struct file_info {
-	file_info() {
-		IsInvalid = false;
-		IsDirectory = -1;
-		HasNext = true;
-		memset(szFileName, 0, sizeof(szFileName));
-	}
-	bool IsInvalid;//是否有效
-	bool IsDirectory;//是否为目录
-	bool HasNext;//是否还有后续
-	char szFileName[256];//文件名
-}FILEINFO, * PFILEINFO;
 class ClientSocket
 {
 public:

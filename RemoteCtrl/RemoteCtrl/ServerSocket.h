@@ -2,6 +2,7 @@
 #include "pch.h"
 #include "framework.h"
 void Dump(BYTE* pData, size_t nSize);
+#pragma pack(push, 1)
 typedef struct file_info {
 	file_info() {
 		IsInvalid = false;
@@ -14,6 +15,7 @@ typedef struct file_info {
 	bool HasNext;//是否还有后续
 	char szFileName[256];//文件名
 }FILEINFO, * PFILEINFO;
+#pragma pack(pop)
 class CPacket {
 public:
 
@@ -205,8 +207,9 @@ public:
 	}
 	bool Send(CPacket& pack){
 		if (m_client == -1)return false;
-		Dump((BYTE*)pack.Data(), pack.Size());
+		//Dump((BYTE*)pack.Data(), pack.Size());
 		return send(m_client, pack.Data(), pack.Size(), 0);
+
 	}
 
 	bool GetFilePath(std::string& strPath) {

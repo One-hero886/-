@@ -57,11 +57,14 @@ int MakeDirectoryInfo() {
     std::string strPath;
     //std::list<FILEINFO> lstFileInfos;
     if (CServerSocket::getInstance()->GetFilePath(strPath) == false) {
+        TRACE(">>> [服务端错误] 不是获取文件列表命令，解析失败\n");
         OutputDebugString(_T("当前的命令，不是获取文件列表，命令解析错误"));
         return -1;
     }
+    //TRACE(">>> [服务端收到请求路径] strPath = [%s], 长度 = %d\n", strPath.c_str(), (int)strPath.length());
     TRACE("%s\r\n", strPath.c_str());
     if (_chdir(strPath.c_str()) != 0) {
+        //TRACE(">>> [服务端错误] _chdir 失败，无法切换目录: [%s] (可能路径不存在或权限不足)\n", strPath.c_str());
         FILEINFO finfo;
         CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
         CServerSocket::getInstance()->Send(pack);
@@ -72,6 +75,7 @@ int MakeDirectoryInfo() {
     _finddata_t fdata;
     intptr_t hfind = 0;
     if ((hfind=_findfirst("*", &fdata)) == -1) {
+        //TRACE(">>> [服务端错误] _findfirst 失败，当前目录下未找到任何文件！\n");
         OutputDebugString(_T("没有找到任何文件！！"));
         FILEINFO finfo;
         finfo.HasNext = false;
@@ -79,16 +83,25 @@ int MakeDirectoryInfo() {
         CServerSocket::getInstance()->Send(pack);
         return -3;
     }
+    int nCount = 0;
     do {
         FILEINFO finfo;
+        memset(&finfo, 0, sizeof(finfo));
+
         finfo.IsDirectory = (fdata.attrib & _A_SUBDIR) != 0;
+        finfo.HasNext = TRUE;
+
         memcpy(finfo.szFileName,fdata.name,strlen(fdata.name));
+        nCount++;
+       // TRACE(">>> [服务端找到并发送第 %d 项] fdata.name: [%s] | finfo.szFileName: [%s] | IsDir: %d\n",
+            nCount, fdata.name, finfo.szFileName, finfo.IsDirectory);
         TRACE("%s\r\n",finfo.szFileName);
         CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
         CServerSocket::getInstance()->Send(pack);
         //lstFileInfos.push_back(finfo);
     } while (!_findnext(hfind, &fdata));
-
+    _findclose(hfind);
+    //TRACE(">>> [服务端] 遍历结束，共发送 %d 项，正在发送结束包(HasNext=FALSE)\n", nCount);
     FILEINFO finfo;
     finfo.HasNext = false;
     CPacket pack(2, (BYTE*)&finfo, sizeof(finfo));
