@@ -1,7 +1,7 @@
 ﻿
 // RemoteClientDlg.cpp: 实现文件
 //
-
+#define _CRT_SECURE_NO_WARNINGS
 #include "pch.h"
 #include "framework.h"
 #include "RemoteClient.h"
@@ -98,6 +98,9 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_NOTIFY(NM_DBLCLK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMDblclkTreeDir)
 	ON_NOTIFY(NM_CLICK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMClickTreeDir)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST_FILE, &CRemoteClientDlg::OnNMRClickListFile)
+	ON_COMMAND(ID_DOWNLOAD_FILE, &CRemoteClientDlg::OnDownloadFile)
+	ON_COMMAND(ID_DEL_FILE, &CRemoteClientDlg::OnDelFile)
+	ON_COMMAND(ID_OPEN_FILE, &CRemoteClientDlg::OnOpenFile)
 END_MESSAGE_MAP()
 
 
@@ -440,4 +443,63 @@ void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 	if (pPupup != NULL) {
 		pPupup->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, ptMouse.x, ptMouse.y, this);
 	}
+}
+
+void CRemoteClientDlg::OnDownloadFile()
+{
+	// TODO: 在此添加命令处理程序代码
+
+	int nListSelected = m_List.GetSelectionMark();
+	CString strFile=m_List.GetItemText(nListSelected, 0);
+
+	CFileDialog dlg(FALSE, "*", m_List.GetItemText(nListSelected, 0), OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT
+		, NULL, this);
+
+	if (dlg.DoModal() == IDOK) {
+		FILE* pFile = fopen(dlg.GetPathName(),"wb+");
+		if (pFile == NULL) {
+			AfxMessageBox("文件无法创建！！");
+			return;
+		}
+		HTREEITEM hSelected = m_Tree.GetSelectedItem();
+
+		strFile=GetPath(hSelected)+ _T("\\")+strFile;
+		TRACE(_T("获取的文件路径%s\r\n"), strFile);
+
+		int ret=SendCommandPacket(4, false, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
+		if (ret < 0) {
+			AfxMessageBox("执行下载命令失败！！");
+			TRACE(_T("执行下载失败:ret=%d\r\n"),ret);
+			return ;
+		}
+		ClientSocket* pClient = ClientSocket::getInstance();
+		long long nlength =*(long long*)pClient->GetPacket().strData.c_str();
+		if (nlength == 0) {
+			AfxMessageBox("文件长度为零或者无法读取文件！！");
+			return;
+		}
+		long long nCount = 0;
+		while (nCount < nlength) { 
+			ret = pClient->DealCommand();
+			if(ret<0){
+				AfxMessageBox("传输失败！！");
+				TRACE(_T("传输失败:ret=%d\r\n"), ret);
+				break;
+			}
+			fwrite(pClient->GetPacket().strData.c_str(), 1, pClient->GetPacket().strData.size(), pFile);
+			nCount += pClient->GetPacket().strData.size();
+		}
+		fclose(pFile);
+		pClient->CloseSocket();
+	}
+}
+
+void CRemoteClientDlg::OnDelFile()
+{
+	// TODO: 在此添加命令处理程序代码
+}
+
+void CRemoteClientDlg::OnOpenFile()
+{
+	// TODO: 在此添加命令处理程序代码
 }
