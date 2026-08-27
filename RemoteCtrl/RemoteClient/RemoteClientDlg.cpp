@@ -523,10 +523,11 @@ void CRemoteClientDlg::OnDownloadFile()
 void CRemoteClientDlg::OnDelFile()
 {
 	HTREEITEM hSelected = m_Tree.GetSelectedItem();
+
 	int nListSelected = m_List.GetSelectionMark();
 	CString strFile = m_List.GetItemText(nListSelected, 0);
 	strFile = GetPath(hSelected) + _T("\\") + strFile;
-
+	TRACE(_T("删除文件名称：%s\r\n"),strFile);
 	int ret = SendCommandPacket(9, true, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
 	if (ret < 0) {
 		AfxMessageBox("删除文件命令失败！！");

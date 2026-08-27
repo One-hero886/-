@@ -350,14 +350,14 @@ int DeleteLocalFile() {
 	//TCHAR sPath[MAX_PATH] =_T("");
     //mbstowcs(sPath,strPath.c_str(),strPath.size());
 
-    wchar_t szPath[MAX_PATH] = { 0 };
-    size_t converted = 0;
-    mbstowcs_s(&converted, szPath, MAX_PATH, strPath.c_str(), _TRUNCATE);//中文容易乱码
-    DeleteFileW(szPath);
+    //wchar_t szPath[MAX_PATH] = { 0 };
+    //size_t converted = 0;
+    //mbstowcs_s(&converted, szPath, MAX_PATH, strPath.c_str(), _TRUNCATE);//中文容易乱码
+    //DeleteFileW(szPath);
 
 	//MultiByteToWideChar(CP_ACP, 0, strPath.c_str(), strPath.size(),
-    //    szPath, sizeof(sPath)/sizeof(TCHAR));
-    //DeleteFileA(szPath);
+        //sPath, sizeof(sPath)/sizeof(TCHAR));
+    DeleteFileA(strPath.c_str());
 
     CPacket pack(9, NULL, 0);
     bool ret = CServerSocket::getInstance()->Send(pack);
