@@ -183,7 +183,7 @@ public:
 			}
 			index += len;
 			len = index;
-			m_packet = CPacket((BYTE*)buffer, len);
+			m_packet = CPacket((BYTE*)buffer, len); 
 			if (len > 0) {
 				memmove(buffer, buffer + len, index - len);
 				index -= len;
