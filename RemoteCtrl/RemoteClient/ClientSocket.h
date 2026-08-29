@@ -167,7 +167,7 @@ public:
 	}
 
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 409600
 	int  DealCommand() {
 		if (m_sock == -1)return false;
 		//char buffer[1024] = "";
@@ -177,7 +177,7 @@ public:
 		while (true)
 		{
 			size_t len = recv(m_sock, buffer + index, BUFFER_SIZE - index, 0);
-			if (len <= 0&&(index<=0))
+			if ((len <= 0)&&(index<=0))
 			{
 				return -1;
 			}
@@ -190,6 +190,7 @@ public:
 				return m_packet.sCmd;
 			}
 		}
+		return -1;
 	}
 	bool Send(const char* pData, size_t nSize)
 	{

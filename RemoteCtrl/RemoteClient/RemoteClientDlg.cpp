@@ -250,44 +250,44 @@ void CRemoteClientDlg::threadEntryForWatchData(void* arg)
 }
 void CRemoteClientDlg::threadWatchData()
 {
+	Sleep(50);
 	ClientSocket* pClient = NULL;
 	do {
 		pClient = ClientSocket::getInstance();
 
-	}while (pClient==NULL);
-
+	} while (pClient == NULL);
+	ULONGLONG tick = GetTickCount64();
 	for (;;) {
-		CPacket pack(6, NULL, 0);
-		bool ret = pClient->Send(pack);
-		if (ret) {
-			int cmd = pClient->DealCommand();
-			if (cmd == 6) {
-				if (m_isFull == false) {
-					BYTE* pData = (BYTE*)pClient->GetPacket().strData.c_str();
+		if (m_isFull == false) {
+			//CPacket pack(6, NULL, 0);
+			//bool ret = pClient->Send(pack);
+			int ret = SendMessage(WM_SEND_PACKET, 6 << 1 | 1);
+			if (ret == 6) {
+				BYTE* pData = (BYTE*)pClient->GetPacket().strData.c_str();
 
-					HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
-					if (hMem == NULL) {
-						TRACE("内存不足！！！");
-						Sleep(1);
-						continue;
-					}
-					IStream* pStream = NULL;
-					HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
-					if (hRet == S_OK) {
-						ULONG length = 0;
-						pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
-						LARGE_INTEGER bg = { 0 };
-						pStream->Seek(bg, STREAM_SEEK_SET, NULL);
+				HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
+				if (hMem == NULL) {
+					TRACE("内存不足！！！");
+					Sleep(1);
+					continue;
+				}
+				IStream* pStream = NULL;
+				HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+				if (hRet == S_OK) {
+					ULONG length = 0;
+					pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
+					LARGE_INTEGER bg = { 0 };
+					pStream->Seek(bg, STREAM_SEEK_SET, NULL);
 
-						m_image.Load(pStream);
-						m_isFull = true;
-					}
+					m_image.Load(pStream);
+					m_isFull = true;
 				}
 			}
+			else {
+				Sleep(1);
+			}
 		}
-		else {
-			Sleep(1);
-		}
+		else Sleep(1);
 	}
 }
 void CRemoteClientDlg::threadEntryForDownFile(void* arg)
@@ -638,18 +638,33 @@ void CRemoteClientDlg::OnOpenFile()
 
 LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
 {
-	CString strFile = (LPCSTR)lParam;
-	int ret = SendCommandPacket(wParam>>1,wParam & 1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
-
+	int ret = 0;
+	int cmd = wParam >> 1;
+	switch (cmd)
+	{
+	case 4: 
+	{
+		CString strFile = (LPCSTR)lParam;
+		ret = SendCommandPacket(cmd,wParam & 1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
+	}	
+	case 6:
+	{
+			ret = SendCommandPacket(cmd, wParam & 1);
+	}
+		break;
+	default:
+		ret = -1;
+	}
 	return ret;
 }
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()
 {
+	CWatchDialog dlg(this);
 	// TODO: 在此添加控件通知处理程序代码
 	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
-	GetDlgItem(IDC_BTN_START_WATCH)->EnableWindow(FALSE);
+	//GetDlgItem(IDC_BTN_START_WATCH)->EnableWindow(FALSE);
 
-	CWatchDialog dlg(this);
+
 	dlg.DoModal();
 }
