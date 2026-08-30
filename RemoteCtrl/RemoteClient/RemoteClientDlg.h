@@ -35,6 +35,7 @@ private:
 
 	CImage m_image;//缓存
 	bool m_isFull;//true表示有缓存
+	bool m_isWatchClosed;
 private:
 	static void threadEntryForWatchData(void* arg);//静态函数不能用this指针
 	void threadWatchData();//成员函数可以用this指针

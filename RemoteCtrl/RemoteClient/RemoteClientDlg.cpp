@@ -140,7 +140,8 @@ BOOL CRemoteClientDlg::OnInitDialog()
 
 	// TODO: 在此添加额外的初始化代码
 	UpdateData();
-	m_server_address = 0x7f000001;
+	//m_server_address = 0x7f000001;
+	m_server_address = 0xC0A8F383;//192.168.243.131
 	m_nPort = _T("8080");
 	UpdateData(FALSE);
 
@@ -257,7 +258,7 @@ void CRemoteClientDlg::threadWatchData()
 
 	} while (pClient == NULL);
 	ULONGLONG tick = GetTickCount64();
-	for (;;) {
+	while(!m_isWatchClosed) {
 		if (m_isFull == false) {
 			//CPacket pack(6, NULL, 0);
 			//bool ret = pClient->Send(pack);
@@ -278,6 +279,8 @@ void CRemoteClientDlg::threadWatchData()
 					pStream->Write(pData, pClient->GetPacket().strData.size(), &length);
 					LARGE_INTEGER bg = { 0 };
 					pStream->Seek(bg, STREAM_SEEK_SET, NULL);
+					if((HBITMAP)m_image!=NULL)
+						m_image.Destroy();
 
 					m_image.Load(pStream);
 					m_isFull = true;
@@ -646,7 +649,13 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
 	{
 		CString strFile = (LPCSTR)lParam;
 		ret = SendCommandPacket(cmd,wParam & 1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
-	}	
+	}
+	break;
+	case 5:
+	{
+		ret = SendCommandPacket(cmd, wParam & 1,(BYTE*)lParam,sizeof(MOUSEEV));
+	}
+	break;
 	case 6:
 	{
 			ret = SendCommandPacket(cmd, wParam & 1);
@@ -660,11 +669,12 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()
 {
+	m_isWatchClosed = false;
 	CWatchDialog dlg(this);
 	// TODO: 在此添加控件通知处理程序代码
-	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
+	HANDLE hThread=(HANDLE)_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
 	//GetDlgItem(IDC_BTN_START_WATCH)->EnableWindow(FALSE);
-
-
 	dlg.DoModal();
+	m_isWatchClosed = true;
+	WaitForSingleObject(hThread, 500);
 }

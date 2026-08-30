@@ -157,7 +157,6 @@ int  MouseEvent() {
         
         switch (mouse.nButton) {
         case 0://左键
-            if (mouse.nAction == 0)
                 nFlags = 1;
             break;
         case 1://右键
@@ -181,10 +180,15 @@ int  MouseEvent() {
         case 3://放开
             nFlags |= 0x80;
             break;
+        default:
+			break;
         }
+        TRACE("mouse event:%08X x%d y %d\r\n",nFlags,mouse.ptXY.x,mouse.ptXY.y);
         switch (nFlags)
         {
         case 0x21://左键双击
+            mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
             mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
             mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
             break;
@@ -201,6 +205,8 @@ int  MouseEvent() {
         case 0x22://右键双击
             mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
             mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
             break;
         case 0x12://右键单击
             mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
@@ -213,6 +219,8 @@ int  MouseEvent() {
             mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
             break;
         case 0x24://中键双击
+            mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
             mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
             mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
             break;
@@ -230,7 +238,7 @@ int  MouseEvent() {
             mouse_event(MOUSEEVENTF_MOVE, mouse.ptXY.x, mouse.ptXY.y, 0, GetMessageExtraInfo());
             break;
         }
-         CPacket pack(4, NULL, 0);
+         CPacket pack(5, NULL, 0);
          CServerSocket::getInstance()->Send(pack);
 
     }else {

@@ -198,7 +198,7 @@ public:
 		return send(m_sock, pData, nSize, 0) > 0;
 	}
 	bool Send(CPacket& pack) {
-		TRACE("m_sock=%d\r\n",m_sock);
+		//TRACE("m_sock=%d\r\n",m_sock);
 		if (m_sock == -1)return false;
 		return send(m_sock, pack.Data(), pack.Size(), 0);
 	}
