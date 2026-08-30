@@ -48,7 +48,7 @@ public:
 	}
 	CPacket(const BYTE* pData, size_t& nSize) {
 		size_t i = 0;
-		for (; i < nSize; i++) {
+		for (; i +1< nSize; i++) {
 			if (*(WORD*)(pData + i) == 0xFEFF) {
 				sHead = *(WORD*)(pData + i);
 				i += 2;
@@ -167,7 +167,7 @@ public:
 	}
 
 
-#define BUFFER_SIZE 409600
+#define BUFFER_SIZE 4096000
 	int  DealCommand() {
 		if (m_sock == -1)return false;
 		//char buffer[1024] = "";

@@ -29,7 +29,10 @@ void CStatusDlg::DoDataExchange(CDataExchange* pDX)
 
 
 BEGIN_MESSAGE_MAP(CStatusDlg, CDialog)
+	
 END_MESSAGE_MAP()
 
 
 // CStatusDlg 消息处理程序
+
+
