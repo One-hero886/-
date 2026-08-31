@@ -303,6 +303,17 @@ unsigned _stdcall threadLockDlg(void* arg) {
     rect.right = GetSystemMetrics(SM_CXFULLSCREEN);
     rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN);
     dlg.MoveWindow(rect);
+	CWnd* pText = dlg.GetDlgItem(IDC_STATIC);
+    if (pText) {
+		CRect rtext;
+		pText->GetWindowRect(rtext);
+		int nWidth = rtext.Width();
+		int x=(rect.right - nWidth) / 2;
+        int nHeight = rtext.Height();
+        int y= (rect.bottom - nHeight) / 2;
+		pText->MoveWindow(x, y, nWidth, nHeight);
+    }
+
     //窗口置顶
     dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 
@@ -310,6 +321,7 @@ unsigned _stdcall threadLockDlg(void* arg) {
     ShowCursor(false);
     //隐藏任务栏
     ::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);
+	dlg.GetWindowRect(rect);
     rect.left = 0;
     rect.top = 0;
     rect.right = 1;
@@ -320,22 +332,28 @@ unsigned _stdcall threadLockDlg(void* arg) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
 
+        if (msg.message == WM_CLOSE) {
+            TRACE("收到 WM_CLOSE，退出\n");
+            break;
+        }
         if (msg.message == WM_KEYDOWN) {
             TRACE("msg:%08x lparam:%08X\r\n", msg.message, msg.wParam, msg.lParam);
-            if (msg.wParam == 0x1B) {//ESC退出
+            if (msg.wParam == 0x1B ) {//ESC退出
                 break;
             }
         }
     }
-    
+    ClipCursor(NULL);
+    //恢复鼠标
     ShowCursor(true);
+    //恢复任务栏
     ::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
     dlg.DestroyWindow();
     _endthreadex(0);
     return 0;
 }
 int LockMachine() {
-    if (dlg.m_hWnd == NULL && dlg.m_hWnd == INVALID_HANDLE_VALUE) {
+    if ((dlg.m_hWnd == NULL)||(dlg.m_hWnd==INVALID_HANDLE_VALUE)) {
         //_beginthread(threadLockDlg, 0,NULL);
         _beginthreadex(NULL,0,threadLockDlg,NULL,0, &threadid);
     }
@@ -344,10 +362,18 @@ int LockMachine() {
     return 0;
 }
 int UnlockMachine() {
-    
     //dlg.SendMessage(WM_KEYDOWN,0x41,0x01E0001);
-    PostThreadMessage(threadid,WM_KEYDOWN,0X41,0);
-    CPacket pack(7, NULL, 0);
+    //BOOL ret=PostThreadMessage(threadid,WM_KEYDOWN,0X41,0);
+    //TRACE(">>> PostThreadMessage 返回: %d (非0表示成功)\n", ret);
+    //if (ret == 0) {
+    //    TRACE(">>> PostThreadMessage 失败！错误码: %d\n", GetLastError());
+    //}
+    if (dlg.m_hWnd != NULL && ::IsWindow(dlg.m_hWnd)) {
+        ::PostMessage(dlg.m_hWnd, WM_CLOSE, 0, 0);
+        TRACE("解锁：发送 WM_CLOSE 给锁屏窗口\n");
+    }
+
+    CPacket pack(8, NULL, 0);
     CServerSocket::getInstance()->Send(pack);
     return 0;
 }

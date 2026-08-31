@@ -39,6 +39,8 @@ BEGIN_MESSAGE_MAP(CWatchDialog, CDialog)
 	ON_WM_RBUTTONDOWN()
 	ON_WM_RBUTTONUP()
 	ON_WM_MOUSEMOVE()
+	ON_BN_CLICKED(IDC_BTN_LOCK, &CWatchDialog::OnBnClickedBtnLock)
+	ON_BN_CLICKED(IDC_BTN_UNLOCK, &CWatchDialog::OnBnClickedBtnUnlock)
 END_MESSAGE_MAP()
 
 
@@ -48,13 +50,35 @@ CPoint CWatchDialog::UserPoint2RemoteScreenPoint(CPoint& point,bool isScreen)
 {
 	CRect clientRect;
 	if(isScreen)ScreenToClient(&point);//全局坐标转为客户区坐标
-	
-	m_picture.GetWindowRect(clientRect);
+
+	CRect rect;
+	m_picture.GetWindowRect(rect);
+	ScreenToClient(rect);
+
+	int relX = point.x - rect.left;
+	int relY = point.y - rect.top;
+
+	int ctrlWidth = rect.Width();
+	int ctrlHeight = rect.Height();
+	if (ctrlWidth <= 0 || ctrlHeight <= 0 || m_nObjWidth <= 0 || m_nObjHeight <= 0) {
+		return CPoint(0, 0);
+	}
+
+	// 限制在控件范围内
+	relX = max(0, min(relX, ctrlWidth - 1));
+	relY = max(0, min(relY, ctrlHeight - 1));
+
+
+	// 4. 比例换算到远程屏幕坐标
+	int remoteX = (int)((double)relX * m_nObjWidth / ctrlWidth);
+	int remoteY = (int)((double)relY * m_nObjHeight / ctrlHeight);
+
 	//本地坐标到远程屏幕坐标
-	float width0=clientRect.Width();
-	float height0= clientRect.Height();
-	int width = 2560, height = 1600;
-	return CPoint(point.x * m_nObjWidth / width0,point.y *m_nObjHeight / height0);
+	//float width0=clientRect.Width();
+	//float height0= clientRect.Height();
+	//int width = 2560, height = 1600;
+	return CPoint(remoteX, remoteY);
+		//CPoint(point.x * m_nObjWidth / width0,point.y *m_nObjHeight / height0);
 }
 
 BOOL CWatchDialog::OnInitDialog()
@@ -270,4 +294,18 @@ void CWatchDialog::OnOK()
 	// TODO: 在此添加专用代码和/或调用基类
 
 	//CDialog::OnOK();
+}
+
+void CWatchDialog::OnBnClickedBtnLock()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent();
+	pParent->SendMessage(WM_SEND_PACKET, 7 << 1 | 1);
+}
+
+void CWatchDialog::OnBnClickedBtnUnlock()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	CRemoteClientDlg* pParent = (CRemoteClientDlg*)GetParent();
+	pParent->SendMessage(WM_SEND_PACKET, 8 << 1 | 1);
 }
