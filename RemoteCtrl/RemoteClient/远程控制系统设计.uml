@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XPD:PROJECT xmlns:XPD="http://www.staruml.com" version="1">
+<XPD:HEADER>
+<XPD:SUBUNITS>
+</XPD:SUBUNITS>
+<XPD:PROFILES>
+</XPD:PROFILES>
+</XPD:HEADER>
+<XPD:BODY>
+<XPD:OBJ name="DocumentElement" type="UMLProject" guid="zSbgIxMSxkGE4g2ngKxxoAAA">
+<XPD:ATTR name="Documentation" type="string">该系统包括两个部分
+A.远程控制服务
+B.请求控制客户端
+</XPD:ATTR>
+<XPD:ATTR name="Title" type="string">远程控制系统设计</XPD:ATTR>
+<XPD:ATTR name="Author" type="string">田梦超</XPD:ATTR>
+</XPD:OBJ>
+</XPD:BODY>
+</XPD:PROJECT>
