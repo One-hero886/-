@@ -1,135 +1,11 @@
 #pragma once
 #include "pch.h"
 #include "framework.h"
-void Dump(BYTE* pData, size_t nSize);
-#pragma pack(push, 1)
-typedef struct file_info {
-	file_info() {
-		IsInvalid = false;
-		IsDirectory = -1;
-		HasNext = true;
-		memset(szFileName, 0, sizeof(szFileName));
-	}
-	bool IsInvalid;//是否有效
-	bool IsDirectory;//是否为目录
-	bool HasNext;//是否还有后续
-	char szFileName[256];//文件名
-}FILEINFO, * PFILEINFO;
-#pragma pack(pop)
-class CPacket {
-public:
+#include<list>
+#include"Packet.h"
 
-	CPacket():sHead(0),nLength(0),sCmd(0),sSum(0) {}
 
-	CPacket(WORD nCmd, const BYTE* pData, size_t nSize) {
-		sHead = 0xFEFF;
-		nLength = nSize + 4;
-		sCmd = nCmd;
-		if (nSize > 0) {
-			strData.resize(nSize);
-			memcpy((void*)strData.c_str(),pData,nSize);
-		}
-		else {
-			strData.clear();
-		}
-
-		sSum = 0;
-		for (size_t j = 0; j < strData.size(); j++) {
-			sSum += BYTE(strData[j]) & 0xFF;
-		}
-	}
-	CPacket(const CPacket& pack) {
-		sHead = pack.sHead;
-		nLength = pack.nLength;
-		sCmd = pack.sCmd;
-		strData = pack.strData;
-		sSum = pack.sSum;
-
-	}
-	CPacket(const BYTE* pData, size_t& nSize) {
-		size_t i = 0;
-		for (; i < nSize; i++) {
-			if (*(WORD*)(pData + i) == 0xFEFF) {
-				sHead = *(WORD*)(pData + i);
-				i += 2;
-				break;
-			}
-		}
-		if (i+8 > nSize) {//包数据可能不全，或者包头未能全部接收到
-			nSize = 0;
-			return;
-		}
-		nLength = *(DWORD*)(pData + i);
-		if (nLength + i > nSize) {//包未完全接受到
-			nSize = 0;
-			return;
-		}
-		i += 4;
-		sCmd= *(DWORD*)(pData + i);
-		i += 2;
-		if(nLength>4){
-			strData.resize(nLength - 2 - 2);
-			memcpy((void*)strData.c_str(),pData+i,nLength-4);
-			i += nLength - 4;
-		}
-		sSum = *(WORD*)(pData + i); i += 2;
-		WORD sum = 0;
-
-		for (size_t j = 0; j < strData.size(); j++) {
-			sum += BYTE(strData[j])&0xFF;
-		}
-		if (sum == sSum) {
-			nSize = i;
-			return;
-		}
-		nSize = 0;
-	}
-	~CPacket() {}
-	CPacket& operator=(const CPacket& pack) {
-		if (this == &pack)return *this;
-
-		sHead = pack.sHead;
-		nLength = pack.nLength;
-		sCmd = pack.sCmd;
-		strData = pack.strData;
-		sSum = pack.sSum;
-	}
-	int Size() {
-		return nLength + 6;
-	}
-	const char* Data() {
-		strOut.resize(nLength + 6);
-		BYTE* pData = (BYTE*)strOut.c_str();
-		*(WORD*)pData = sHead; pData += 2;
-		*(DWORD*)(pData) = nLength; pData += 4;
-		*(WORD*)pData = sCmd; pData += 2;
-		memcpy(pData,strData.c_str(),strData.size()); pData += strData.size();
-		*(WORD*)pData = sSum;
-		return strOut.c_str();
-	}
-public:
-	WORD sHead;//包头
-	DWORD nLength;//包长度
-	WORD sCmd;//控制命令
-	std::string strData;//包数据
-	WORD sSum;//和校验
-
-	std::string strOut;//整个包数据
-};
-
-typedef struct MouseEvent{
-	MouseEvent() {
-		nAction = 0;
-		nButton = -1;
-		ptXY.x = 0;
-		ptXY.y = 0;
-	}
-	
-	WORD nAction;//点击，移动，双击
-	WORD nButton;//左键，中键，右键
-	POINT ptXY;//坐标
-}MOUSEEV,*PMOUSEEV;
-
+typedef void(*SOCK_CALLBACK)(void* , int ,std::list<CPacket>&,CPacket&);
 class CServerSocket
 {
 public:
@@ -139,7 +15,7 @@ public:
 		}
 		return m_instance;
 	}
-	bool InitSocket() {
+	bool InitSocket(short port) {
 	
 		if (m_sock == -1) return false;
 		sockaddr_in serv_addr;
@@ -147,7 +23,7 @@ public:
 		memset(&serv_addr,0,sizeof(serv_addr));
 		serv_addr.sin_family = AF_INET;
 		serv_addr.sin_addr.s_addr = INADDR_ANY;
-		serv_addr.sin_port = htons(8080);
+		serv_addr.sin_port = htons(port);
 		if (bind(m_sock, (sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
 		{
 			return false;
@@ -156,9 +32,37 @@ public:
 		{
 			return false;
 		}
+
 		return true;
 	}
 
+	int Run(SOCK_CALLBACK callback, void* arg, short port = 8080) {
+
+		bool ret = InitSocket(port);
+		if (ret == false) return -1;
+		std::list<CPacket> lstPackets;
+		m_callback = callback;
+		m_arg = arg;
+		int count = 0;
+		while (true) {
+			if (AcceptClient() == FALSE) {
+				if (count >= 3) {
+					return -2;
+				}
+				count++;
+			}
+			int ret = DealCommand();
+			if (ret > 0) {
+				m_callback(m_arg, ret, lstPackets,m_packet);
+				if (lstPackets.size() > 0) {
+					Send(lstPackets.front());
+						lstPackets.pop_front();
+				}
+			}
+			CloseClient();
+		}
+		return 0;
+	}
 	bool AcceptClient() {
 
 		sockaddr_in client_addr;
@@ -230,11 +134,15 @@ public:
 		return m_packet;
 	}
 	void CloseClient() {
-		closesocket(m_client);
-		m_client = INVALID_SOCKET;
+		if (m_client != INVALID_SOCKET) {
+			closesocket(m_client);
+			m_client = INVALID_SOCKET;
+		}
+
 	}
 private:
-
+	SOCK_CALLBACK m_callback;
+	void* m_arg;
 	SOCKET m_sock,m_client;
 	CPacket m_packet;
 	CServerSocket& operator=(const CServerSocket& ss) {}
