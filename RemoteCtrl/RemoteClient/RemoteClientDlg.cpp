@@ -140,8 +140,8 @@ BOOL CRemoteClientDlg::OnInitDialog()
 
 	// TODO: 在此添加额外的初始化代码
 	UpdateData();
-	//m_server_address = 0x7f000001;
-	m_server_address = 0xC0A8F383;//192.168.243.131
+	m_server_address = 0x7f000001;
+	//m_server_address = 0xC0A8F383;//192.168.243.131
 	m_nPort = _T("8080");
 	UpdateData(FALSE);
 
@@ -212,8 +212,6 @@ void CRemoteClientDlg::OnBnClickedBtnTest()
 
 void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 {
-	// TODO: 在此添加控件通知处理程序代码
-
 	int ret=SendCommandPacket(1);
 	if (ret == -1) {
 		AfxMessageBox(_T("命令处理失败！！"));
@@ -239,7 +237,8 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 	}
 	if (!dr.empty()) {
 		dr += ":";
-		m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+		HTREEITEM hTemp=m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+		m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
 		dr.clear();
 	}
 }
@@ -440,17 +439,25 @@ void CRemoteClientDlg::LoadFileInfo1()
 	DeleteTreeChildrenItem(hTreeSelected);
 
 	CString strPath = GetPath(hTreeSelected);
-
+	TRACE(_T("[测试-发送请求] 路径: %s, 字符数: %d\n"), (LPCTSTR)strPath, strPath.GetLength());
 	//DeleteTreeChildrenItem(hTreeSelected);
 	m_List.DeleteAllItems();
 	int nCmd = SendCommandPacket(2, false, (BYTE*)(LPCTSTR)strPath, strPath.GetLength());
+	if (nCmd < 0) {
+		TRACE(_T("[错误] 发送命令失败！\n"));
+		return;
+	}
+	ClientSocket* pClient = ClientSocket::getInstance();
 	PFILEINFO pInfo = (PFILEINFO)ClientSocket::getInstance()->GetPacket().strData.c_str();
 
-	ClientSocket* pClient = ClientSocket::getInstance();
+	
 	while (pInfo->HasNext) {
 		CString strName = CA2T(pInfo->szFileName);
-		TRACE("[%s] is a dir %d\r\n", pInfo->szFileName, pInfo->IsDirectory);
-			if (CString(pInfo->szFileName) == "." || (CString(pInfo->szFileName) == "..")) {
+
+		TRACE("[调试] 文件名: %s, 是目录: %d\n", (LPCTSTR)strName, pInfo->IsDirectory);
+
+		//TRACE("[%s] is a dir %d\r\n", pInfo->szFileName, pInfo->IsDirectory);
+		if (CString(pInfo->szFileName) == "." || (CString(pInfo->szFileName) == "..")) {
 				int cmd = pClient->DealCommand();
 				TRACE("ack:%d\r\n", cmd);
 				if (cmd < 0) break;
@@ -458,7 +465,6 @@ void CRemoteClientDlg::LoadFileInfo1()
 				continue;
 			}
 		if (pInfo->IsDirectory) {
-
 			HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, hTreeSelected, TVI_LAST);
 			if (hTemp == NULL) {
 				TRACE(_T(">>> [错误] 目录节点插入失败: [%s]\n"), (LPCTSTR)strName);

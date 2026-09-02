@@ -172,7 +172,6 @@ public:
 		if (m_sock == -1)return false;
 		//char buffer[1024] = "";
 		char* buffer = m_buffer.data();
-
 		static size_t index = 0;
 		while (true)
 		{
