@@ -59,8 +59,8 @@ int CClientController::SendCommandPacket(int nCmd, bool bAutoClose, BYTE* pData,
 	
 		ClientSocket* pClient = ClientSocket::getInstance();
 		if (pClient->InitSocket() == false)return false;
-
-		pClient->Send(CPacket(nCmd, pData, nLength));
+		HANDLE hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
+		pClient->Send(CPacket(nCmd, pData, nLength,hEvent));
 		int cmd = DealCommand();
 		TRACE("ack:%d\r\n", cmd);
 		if (bAutoClose) {
@@ -97,7 +97,7 @@ void CClientController::StartWatchScreen()
 {
 	m_isWatchClosed = false;
 	m_watchDlg.SetParent(&m_remoteDlg);
-	
+	CWatchDialog dlg(&m_remoteDlg);
 	m_hThreadWatch = (HANDLE)_beginthread(CClientController::threadWatchScreen, 0, this);
 	
 	m_watchDlg.DoModal();

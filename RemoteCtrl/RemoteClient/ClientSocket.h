@@ -21,7 +21,7 @@ public:
 
 	CPacket() :sHead(0), nLength(0), sCmd(0), sSum(0) {}
 
-	CPacket(WORD nCmd, const BYTE* pData, size_t nSize) {
+	CPacket(WORD nCmd, const BYTE* pData, size_t nSize,HANDLE  hEvent){
 		sHead = 0xFEFF;
 		nLength = nSize + 4;
 		sCmd = nCmd;
@@ -37,6 +37,7 @@ public:
 		for (size_t j = 0; j < strData.size(); j++) {
 			sSum += BYTE(strData[j]) & 0xFF;
 		}
+		this->hEvent = hEvent;
 	}
 	CPacket(const CPacket& pack) {
 		sHead = pack.sHead;
@@ -44,9 +45,9 @@ public:
 		sCmd = pack.sCmd;
 		strData = pack.strData;
 		sSum = pack.sSum;
-
+		hEvent = pack.hEvent;
 	}
-	CPacket(const BYTE* pData, size_t& nSize) {
+	CPacket(const BYTE* pData, size_t& nSize) :hEvent(INVALID_HANDLE_VALUE) {
 		size_t i = 0;
 		for (; i +1< nSize; i++) {
 			if (*(WORD*)(pData + i) == 0xFEFF) {
@@ -83,6 +84,7 @@ public:
 			return;
 		}
 		nSize = 0;
+
 	}
 	~CPacket() {}
 	CPacket& operator=(const CPacket& pack) {
@@ -93,6 +95,7 @@ public:
 		sCmd = pack.sCmd;
 		strData = pack.strData;
 		sSum = pack.sSum;
+		hEvent = pack.hEvent;
 	}
 	int Size() {
 		return nLength + 6;
@@ -113,7 +116,7 @@ public:
 	WORD sCmd;//控制命令
 	std::string strData;//包数据
 	WORD sSum;//和校验
-
+	HANDLE hEvent;
 	//std::string strOut;//整个包数据
 };
 
@@ -130,6 +133,8 @@ typedef struct MouseEvent {
 	POINT ptXY;//坐标
 }MOUSEEV, * PMOUSEEV;
 #include<vector>
+#include <list>
+#include <map>
 std::string GetErrInfo(int wsaErrCode);
 
 class ClientSocket
@@ -141,7 +146,7 @@ public:
 		}
 		return m_instance;
 	}
-	bool InitSocket(int nIP,int nPort) {
+	bool InitSocket() {
 		if (m_sock != INVALID_SOCKET)CloseSocket();
 		m_sock = socket(PF_INET,SOCK_STREAM,0);
 		if (m_sock == -1) return false;
@@ -230,6 +235,9 @@ public:
 		m_nPort = nPort;
 	}
 private:
+	std::list<CPacket> m_lstSend;
+	std::map<HANDLE, std::list<CPacket>> m_mapAck;
+
 	int m_nIP;
 	int m_nPort;
 	std::vector<char>m_buffer;
@@ -258,9 +266,12 @@ private:
 	~ClientSocket() {
 
 		closesocket(m_sock);
+		m_sock = INVALID_SOCKET;
 		WSACleanup();
 	}
 
+	static void threadEntry(void* arg);
+	void threadFunc();
 	BOOL InitSockEnv() {
 		WSADATA data;
 		if (WSAStartup(MAKEWORD(1, 1), &data) != 0)
