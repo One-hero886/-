@@ -196,19 +196,28 @@ public:
 		}
 		return -1;
 	}
-	bool Send(const char* pData, size_t nSize)
-	{
-		if (m_sock == -1)return false;
-		return send(m_sock, pData, nSize, 0) > 0;
-	}
-	bool Send(const CPacket& pack) {
-		//TRACE("m_sock=%d\r\n",m_sock);
-		if (m_sock == -1)return false;
-		std::string strOut;
-		pack.Data(strOut);
-		return send(m_sock, strOut.c_str(), strOut.size(), 0);
-	}
 
+	bool SendPacket(const CPacket& pack,std::list<CPacket>& lstPacks) {
+		m_lstSend.push_back(pack);
+		if (m_sock == INVALID_SOCKET) {
+			if (InitSocket() == false)return false;
+			_beginthread(&ClientSocket::threadEntry, 0, this);
+		}
+		WaitForSingleObject(pack.hEvent,INFINITE);
+		std::map<HANDLE, std::list<CPacket>>::iterator it;
+		it = m_mapAck.find(pack.hEvent);
+		if (it ! = m_mapAck.end()) {
+			std::list<CPacket>::iterator i;
+			for (i = it->second.begin(); i != it->second.end(); i++) {
+				lstPacks.push_back(*i);
+			}
+			m_mapAck.erase(it);
+			return true;
+		}
+		
+		return false;
+		
+	}
 	bool GetFilePath(std::string& strPath) {
 		if ((m_packet.sCmd >= 2) && (m_packet.sCmd <= 4)) {
 			strPath = m_packet.strData;
@@ -231,8 +240,10 @@ public:
 		m_sock = INVALID_SOCKET;
 	}
 	void UpdateAddress(int nIP, int nPort) {
-		m_nIP = nIP;
-		m_nPort = nPort;
+		if((m_nIP!=nIP)||(m_nPort!=nPort)){
+			m_nIP = nIP;
+			m_nPort = nPort;
+		}
 	}
 private:
 	std::list<CPacket> m_lstSend;
@@ -262,6 +273,7 @@ private:
 
 		m_buffer.resize(BUFFER_SIZE);
 		memset(m_buffer.data(), 0, BUFFER_SIZE);
+		
 	}
 	~ClientSocket() {
 
@@ -269,7 +281,12 @@ private:
 		m_sock = INVALID_SOCKET;
 		WSACleanup();
 	}
-
+	bool Send(const char* pData, size_t nSize)
+	{
+		if (m_sock == -1)return false;
+		return send(m_sock, pData, nSize, 0) > 0;
+	}
+	bool Send(const CPacket& pack);
 	static void threadEntry(void* arg);
 	void threadFunc();
 	BOOL InitSockEnv() {
