@@ -134,7 +134,7 @@ BOOL CRemoteClientDlg::OnInitDialog()
 
 	m_dlgStatus.Create(IDD_DLG_STATUS,this);
 	m_dlgStatus.ShowWindow(SW_HIDE);
-	m_isFull = false;
+
 
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -525,35 +525,7 @@ void CRemoteClientDlg::OnOpenFile()
 
 }
 
-LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)
-{
-	int ret = 0;
-	int cmd = wParam >> 1;
-	switch (cmd)
-	{
-	case 4: 
-	{
-		CString strFile = (LPCSTR)lParam;
-		ret = SendCommandPacket(cmd,wParam & 1, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
-	}
-	break;
-	case 5:
-	{
-		ret = SendCommandPacket(cmd, wParam & 1,(BYTE*)lParam,sizeof(MOUSEEV));
-	}
-	break;
-	case 6:
-	case 7:
-	case 8:
-	{
-		ret = SendCommandPacket(cmd, wParam & 1);
-	}
-	break;
-	default:
-		ret = -1;
-	}
-	return ret;
-}
+
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()
 {
