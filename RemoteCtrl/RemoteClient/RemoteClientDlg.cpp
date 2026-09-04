@@ -199,16 +199,14 @@ void CRemoteClientDlg::OnBnClickedBtnTest()
 
 void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 {
-	int ret= CClientController::getInstance()->SendCommandPacket(1);
-	if (ret == -1) {
+	std::list<CPacket> lstPackets;
+	int ret= CClientController::getInstance()->SendCommandPacket(1,true,NULL,0,&lstPackets);
+	if (ret == -1||(lstPackets.size())<=0) {
 		AfxMessageBox(_T("命令处理失败！！"));
-	}
-	ClientSocket* pClient = ClientSocket::getInstance();
-	if (pClient == nullptr) {
-		AfxMessageBox(_T("无法获取 ClientSocket 实例"));
 		return;
 	}
-	std::string drivers=pClient->GetPacket().strData;
+	CPacket& head = lstPackets.front();
+	std::string drivers = head.strData;
 	std::string dr;
 	m_Tree.DeleteAllItems();
 	
@@ -244,38 +242,35 @@ void CRemoteClientDlg::LoadFileInfo()
 
 	DeleteTreeChildrenItem(hTreeSelected);
 
-	CString strPath = GetPath(hTreeSelected);
-
+	
+	
 	//DeleteTreeChildrenItem(hTreeSelected);
 	m_List.DeleteAllItems();
-	int nCmd = CClientController::getInstance()->SendCommandPacket(2, false, (BYTE*)(LPCTSTR)strPath, strPath.GetLength());
-	PFILEINFO pInfo = (PFILEINFO)ClientSocket::getInstance()->GetPacket().strData.c_str();
+	CString strPath = GetPath(hTreeSelected);
+	std::list<CPacket> lstPackets;
 
-	ClientSocket* pClient = ClientSocket::getInstance();
-	while (pInfo->HasNext ) {
-		TRACE("[%s] is a dir &d\r\n", pInfo->szFileName, pInfo->IsDirectory);
-		if (pInfo->IsDirectory) {
-			if (CString(pInfo->szFileName) == "." || (CString(pInfo->szFileName) == "..")) {
-				int cmd = pClient->DealCommand();
-				TRACE("ack:%d\r\n", cmd);
-				if (cmd < 0) break;
-				pInfo = (PFILEINFO)ClientSocket::getInstance()->GetPacket().strData.c_str();
-				continue;
+	int nCmd = CClientController::getInstance()->SendCommandPacket(2, false,
+		(BYTE*)(LPCTSTR)strPath, strPath.GetLength(),&lstPackets);
+	if (lstPackets.size() > 0) {
+		std::list<CPacket>::iterator it = lstPackets.begin();
+		for (; it != lstPackets.end(); it++) {
+			PFILEINFO pInfo = (PFILEINFO)(*it).strData.c_str();
+			if (pInfo->HasNext == false)continue;
+			if (pInfo->IsDirectory) {
+				if (CString(pInfo->szFileName) == "." || (CString(pInfo->szFileName) == "..")) {
+			
+					continue;
+				}
+				HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, hTreeSelected, TVI_LAST);
+				m_Tree.InsertItem("", hTemp, TVI_LAST);
 			}
-			HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, hTreeSelected, TVI_LAST);
-			m_Tree.InsertItem("", hTemp, TVI_LAST);
+			else {
+				m_List.InsertItem(0, pInfo->szFileName);
+			}
 		}
-		else {
-			m_List.InsertItem(0,pInfo->szFileName);
-		}
-
-		int cmd = pClient->DealCommand();
-		TRACE("ack:%d\r\n", cmd);
-		if (cmd < 0) break;
-		pInfo = (PFILEINFO)ClientSocket::getInstance()->GetPacket().strData.c_str();
-
 	}
-	pClient->CloseSocket();
+
+	
 }
 //void ccc() {
 //
