@@ -37,26 +37,15 @@ private:
 	bool m_isFull;//true表示有缓存
 	bool m_isWatchClosed;
 private:
-	static void threadEntryForWatchData(void* arg);//静态函数不能用this指针
-	void threadWatchData();//成员函数可以用this指针
-	static void threadEntryForDownFile(void* arg);
-	void threadDownFile();
+
 	void LoadFileInfo();
 	void LoadFileInfo1();
 	void LoadFileCurrent();
 	CString GetPath(HTREEITEM hTree);
 	void DeleteTreeChildrenItem(HTREEITEM hTree);
-	//1.查看磁盘分区 
-	// 2.查看指定目录下文件
-	// 3.打开文件 
-	// 4.下载文件
-	// 5.鼠标操作
-	// 6.发送屏幕内容
-	// 7.锁机
-	// 8.解锁机
-	// 9.删除文件
+	
 	//返回值是命令
-	int SendCommandPacket(int nCmd,bool bAutoClose=true, BYTE* pData = NULL, size_t nLength = 0);
+	
 	// 实现
 protected:
 	HICON m_hIcon;
@@ -85,5 +74,7 @@ public:
 	afx_msg void OnOpenFile();
 	afx_msg LRESULT OnSendPacket(WPARAM wParam, LPARAM lParam);
 	afx_msg void OnBnClickedBtnStartWatch();
+	afx_msg void OnIpnFieldchangedIpaddressServ(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnEnChangeEditPort();
 };
 

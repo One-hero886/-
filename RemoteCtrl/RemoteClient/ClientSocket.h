@@ -97,7 +97,7 @@ public:
 	int Size() {
 		return nLength + 6;
 	}
-	const char* Data() {
+	const char* Data(std::string& strOut) const {
 		strOut.resize(nLength + 6);
 		BYTE* pData = (BYTE*)strOut.c_str();
 		*(WORD*)pData = sHead; pData += 2;
@@ -114,7 +114,7 @@ public:
 	std::string strData;//包数据
 	WORD sSum;//和校验
 
-	std::string strOut;//整个包数据
+	//std::string strOut;//整个包数据
 };
 
 typedef struct MouseEvent {
@@ -149,8 +149,8 @@ public:
 
 		memset(&serv_addr, 0, sizeof(serv_addr));
 		serv_addr.sin_family = AF_INET;
-		serv_addr.sin_addr.s_addr =htonl(nIP) ;
-		serv_addr.sin_port = htons(nPort);
+		serv_addr.sin_addr.s_addr =htonl(m_nIP) ;
+		serv_addr.sin_port = htons(m_nPort);
 		if (serv_addr.sin_addr.s_addr == INADDR_NONE) {
 			AfxMessageBox("指定的IP地址，不存在！");
 			return false;
@@ -196,10 +196,12 @@ public:
 		if (m_sock == -1)return false;
 		return send(m_sock, pData, nSize, 0) > 0;
 	}
-	bool Send(CPacket& pack) {
+	bool Send(const CPacket& pack) {
 		//TRACE("m_sock=%d\r\n",m_sock);
 		if (m_sock == -1)return false;
-		return send(m_sock, pack.Data(), pack.Size(), 0);
+		std::string strOut;
+		pack.Data(strOut);
+		return send(m_sock, strOut.c_str(), strOut.size(), 0);
 	}
 
 	bool GetFilePath(std::string& strPath) {
@@ -223,15 +225,26 @@ public:
 		closesocket(m_sock);
 		m_sock = INVALID_SOCKET;
 	}
+	void UpdateAddress(int nIP, int nPort) {
+		m_nIP = nIP;
+		m_nPort = nPort;
+	}
 private:
+	int m_nIP;
+	int m_nPort;
 	std::vector<char>m_buffer;
 	SOCKET m_sock;
 	CPacket m_packet;
 	ClientSocket& operator=(const ClientSocket& ss) {}
-	ClientSocket(const ClientSocket& ss) {
+	ClientSocket(const ClientSocket& ss) 
+	{
 		m_sock = ss.m_sock;
+		 m_nIP=ss.m_nIP;
+		 m_nPort=ss.m_nPort;
 	}
-	ClientSocket() {
+	ClientSocket():
+		m_nIP (INADDR_ANY), m_nPort(0)
+	{
 		
 		if (InitSockEnv() == FALSE)
 		{
