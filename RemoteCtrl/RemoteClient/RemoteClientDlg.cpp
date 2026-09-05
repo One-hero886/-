@@ -207,6 +207,7 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 	}
 	CPacket& head = lstPackets.front();
 	std::string drivers = head.strData;
+	
 	std::string dr;
 	m_Tree.DeleteAllItems();
 	
@@ -494,7 +495,8 @@ void CRemoteClientDlg::OnDelFile()
 	CString strFile = m_List.GetItemText(nListSelected, 0);
 	strFile = GetPath(hSelected) + _T("\\") + strFile;
 	TRACE(_T("删除文件名称：%s\r\n"),strFile);
-	int ret = SendCommandPacket(9, true, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
+	int ret = CClientController::getInstance()->SendCommandPacket(9, true, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
+	//int ret = SendCommandPacket(9, true, (BYTE*)(LPCTSTR)strFile, strFile.GetLength());
 	if (ret < 0) {
 		AfxMessageBox("删除文件命令失败！！");
 		TRACE(_T("删除文件失败:ret=%d\r\n"), ret);

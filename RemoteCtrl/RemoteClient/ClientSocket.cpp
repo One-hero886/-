@@ -117,7 +117,7 @@ bool ClientSocket::InitSocket()
 		TRACE("¡¨Ω” ß∞‹£∫%d %s\r\r", WSAGetLastError(), GetErrInfo(WSAGetLastError()).c_str());
 		return false;
 	}
-	TRACE("socket init done\r\n");
+	//TRACE("socket init done\r\n");
 	return true;
 }
 
@@ -142,7 +142,7 @@ bool ClientSocket::SendPacket(const CPacket& pack, std::list<CPacket>& lstPacks,
 	std::map<HANDLE, std::list<CPacket>>::iterator it;
 	it = m_mapAck.find(pack.hEvent);
 	if (it != m_mapAck.end()) {
-		
+		lstPacks = it->second;
 		m_lock.lock();
 		m_mapAck.erase(it);
 		m_lock.unlock();
