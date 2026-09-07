@@ -5,6 +5,11 @@
 // 请勿在此处添加要频繁更新的文件，这将使得性能优势无效。
 
 #pragma warning(disable: 4996)
+
+#undef _UNICODE
+#undef UNICODE
+#define _MBCS
+
 #ifndef _AFXDLL
 #define _AFXDLL
 #endif

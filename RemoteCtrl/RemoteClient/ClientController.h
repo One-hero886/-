@@ -6,7 +6,7 @@
 #include<map>
 #include"resource.h"
 #include "EdoyunTool.h"
-//#define WM_SEND_PACK (WM_USER+1)//发送包数据
+
 //#define WM_SEND_DATA (WM_USER+2)//发送数据
 #define WM_SHOW_STATUS (WM_USER+3)//展示状态
 #define WM_SHOW_WATCH (WM_USER+4)//远程监控
@@ -41,12 +41,13 @@ public:
 		// 7.锁机
 		// 8.解锁机
 		// 9.删除文件
-		int SendCommandPacket(
+		bool SendCommandPacket(
+			HWND hWnd,//数据包收到后，需要应答的窗口
 			int nCmd,
 			bool bAutoClose = true,
 			BYTE* pData = NULL,
-			size_t nLength = 0,
-			std::list<CPacket>*plstPacks = NULL
+			size_t nLength = 0
+			
 		);
 
 

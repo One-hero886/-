@@ -54,23 +54,10 @@ LRESULT CClientController::SendMessage(MSG msg)
 }
 
 
-int CClientController::SendCommandPacket(int nCmd, bool bAutoClose, BYTE* pData, size_t nLength,
-	std::list<CPacket>* plstPacks)
+bool CClientController::SendCommandPacket(HWND hWnd,int nCmd, bool bAutoClose, BYTE* pData, size_t nLength)
 {
-	
 		ClientSocket* pClient = ClientSocket::getInstance();
-
-		HANDLE hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
-		std::list<CPacket> lstPacks;//应答结果包
-		if (plstPacks == NULL)
-			plstPacks = &lstPacks;
-		pClient->SendPacket(CPacket(nCmd, pData, nLength,hEvent), *plstPacks);
-		CloseHandle(hEvent);//回收事件句柄，防止资源耗尽
-		if (plstPacks->size() > 0) {
-			return plstPacks->front().sCmd;
-		}
-
-		return -1;
+		return pClient->SendPacket(hWnd,CPacket(nCmd, pData, nLength),bAutoClose);
 }
 
 int CClientController::DownFile(CString strPath)
@@ -100,8 +87,8 @@ int CClientController::DownFile(CString strPath)
 void CClientController::StartWatchScreen()
 {
 	m_isWatchClosed = false;
-	m_watchDlg.SetParent(&m_remoteDlg);
-	CWatchDialog dlg(&m_remoteDlg);
+	//m_watchDlg.SetParent(&m_remoteDlg);
+	//CWatchDialog dlg(&m_remoteDlg);
 	m_hThreadWatch = (HANDLE)_beginthread(CClientController::threadWatchScreen, 0, this);
 	
 	m_watchDlg.DoModal();
@@ -112,11 +99,14 @@ void CClientController::StartWatchScreen()
 
 void CClientController::threadWatchScreen()
 {
-	Sleep(50);
+	while (!m_isWatchClosed && !::IsWindow(m_watchDlg.m_hWnd)) {
+		Sleep(10);
+	}
+	//Sleep(50);
 	while (!m_isWatchClosed) {
 		if (m_watchDlg.isFull() == false) {
 			std::list<CPacket> lstPacks;
-			int ret = SendCommandPacket(6,true,NULL,0,&lstPacks);
+			int ret = SendCommandPacket(m_watchDlg.GetSafeHwnd(), 6, true, NULL, 0 );
 			if (ret == 6) {
 				if (CEdoyunTool::Bytes2Image(m_watchDlg.GetImage(), lstPacks.front().strData) == 0) {
 					m_watchDlg.SetImageStatus(true);
@@ -130,13 +120,15 @@ void CClientController::threadWatchScreen()
 						TRACE("获取图片失败！\r\n");
 			}
 		}
-		Sleep(1);
+		Sleep(30);
+		//Sleep(1);
 	}
-	TRACE("thread end %d\r\n",m_isWatchClosed);
+	//TRACE("thread end %d\r\n",m_isWatchClosed);
 }
 
 void CClientController::threadWatchScreen(void* arg)
 {
+
 	CClientController* thiz = (CClientController*)arg;
 	thiz->threadWatchScreen();
 	_endthread();
@@ -146,25 +138,25 @@ void CClientController::threadDownloadFile()
 {
 	FILE* pFile = fopen(m_strLocal, "wb+");
 	if (pFile == NULL) {
-		AfxMessageBox("文件无法创建！！");
+		AfxMessageBox(_T("文件无法创建！！"));
 		m_statusDlg.ShowWindow(SW_HIDE);
 		m_remoteDlg.EndWaitCursor();
 		return;
 	}
 	ClientSocket* pClient = ClientSocket::getInstance();
 	do {
-		int ret=SendCommandPacket(4, false, (BYTE*)(LPCTSTR)m_strRemote, 
+		int ret=SendCommandPacket(m_remoteDlg,4, false, (BYTE*)(LPCTSTR)m_strRemote,
 			m_strRemote.GetLength() );
 		long long nlength = *(long long*)pClient->GetPacket().strData.c_str();
 		if (nlength == 0) {
-			AfxMessageBox("文件长度为零或者无法读取文件！！");
+			//AfxMessageBox(_T("文件长度为零或者无法读取文件！！"));
 			break;
 		}
 		long long nCount = 0;
 		while (nCount < nlength) {
 			ret = pClient->DealCommand();
 			if (ret < 0) {
-				AfxMessageBox("传输失败！！");
+				AfxMessageBox(_T("传输失败！！"));
 				TRACE(_T("传输失败:ret=%d\r\n"), ret);
 				break;
 			}
