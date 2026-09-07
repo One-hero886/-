@@ -87,6 +87,7 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BTN_START_WATCH, &CRemoteClientDlg::OnBnClickedBtnStartWatch)//WM_COMMAND
 	ON_NOTIFY(IPN_FIELDCHANGED, IDC_IPADDRESS_SERV, &CRemoteClientDlg::OnIpnFieldchangedIpaddressServ)
 	ON_EN_CHANGE(IDC_EDIT_PORT, &CRemoteClientDlg::OnEnChangeEditPort)
+	ON_MESSAGE(WM_SEND_PACK_ACK, &CRemoteClientDlg::OnSendPacketAck)
 END_MESSAGE_MAP()
 
 
@@ -200,33 +201,12 @@ void CRemoteClientDlg::OnBnClickedBtnTest()
 void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 {
 	std::list<CPacket> lstPackets;
-	int ret= CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 1,true,NULL,0);
-	if (ret == -1||(lstPackets.size())<=0) {
+	bool ret= CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 1,true,NULL,0);
+	if (ret == 0) {
 		AfxMessageBox(_T("命令处理失败！！"));
 		return;
 	}
-	CPacket& head = lstPackets.front();
-	std::string drivers = head.strData;
 	
-	std::string dr;
-	m_Tree.DeleteAllItems();
-	
-	for (size_t i = 0; i < drivers.size(); i++) {
-		if (drivers[i] == ',') {
-			dr += ":";
-			HTREEITEM hTemp=m_Tree.InsertItem(dr.c_str(),TVI_ROOT,TVI_LAST);
-			m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
-			dr.clear();
-			continue;
-		}
-		dr += drivers[i];
-	}
-	if (!dr.empty()) {
-		dr += ":";
-		HTREEITEM hTemp=m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
-		m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
-		dr.clear();
-	}
 }
 
 
@@ -251,7 +231,7 @@ void CRemoteClientDlg::LoadFileInfo()
 	std::list<CPacket> lstPackets;
 
 	int nCmd = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 2, false,
-		(BYTE*)(LPCTSTR)strPath, strPath.GetLength());
+		(BYTE*)(LPCTSTR)strPath, strPath.GetLength(), (WPARAM)hTreeSelected);
 	if (lstPackets.size() > 0) {
 		std::list<CPacket>::iterator it = lstPackets.begin();
 		for (; it != lstPackets.end(); it++) {
@@ -545,4 +525,99 @@ void CRemoteClientDlg::OnIpnFieldchangedIpaddressServ(NMHDR* pNMHDR, LRESULT* pR
 void CRemoteClientDlg::OnEnChangeEditPort()
 {
 
+}
+
+LRESULT CRemoteClientDlg::OnSendPacketAck(WPARAM wParam, LPARAM lParam){
+	if (lParam == -1 || (lParam == -2)) {
+
+	}
+	else if (lParam == 1) {
+		//对方关闭套接字
+	}
+	else {
+		CPacket* pPacket = (CPacket*)wParam;
+	
+		if (pPacket != NULL) {
+			CPacket& head = *pPacket;
+			switch (pPacket->sCmd) {
+			case 1://获取驱动信息
+			{
+				std::string drivers = head.strData;
+				std::string dr;
+				m_Tree.DeleteAllItems();
+
+				for (size_t i = 0; i < drivers.size(); i++) {
+					if (drivers[i] == ',') {
+						dr += ":";
+						HTREEITEM hTemp = m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+						m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
+						dr.clear();
+						continue;
+					}
+					dr += drivers[i];
+				}
+				if (!dr.empty()) {
+					dr += ":";
+					HTREEITEM hTemp = m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+					m_Tree.InsertItem(NULL, hTemp, TVI_LAST);
+					dr.clear();
+				}
+				break;
+			}
+
+			case 2://获取文件信息
+			{
+				PFILEINFO pInfo = (PFILEINFO)head.strData.c_str();
+				if (pInfo->HasNext == false)break;
+				if (pInfo->IsDirectory) {
+					if (CString(pInfo->szFileName) == "." || (CString(pInfo->szFileName) == "..")) {
+
+						break;
+					}
+					HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, (HTREEITEM)lParam, TVI_LAST);
+					m_Tree.InsertItem("", hTemp, TVI_LAST);
+				}
+				else {
+					m_List.InsertItem(0, pInfo->szFileName);
+				}
+			}
+			break;
+			case 3:
+				TRACE("run file done!\r\n");
+				break;
+			case 4: {
+				static LONGLONG length = 0,index=0;
+				if (length == 0) {
+					length ==*(long long*)head.strData.c_str();
+					if (length == 0) {
+						AfxMessageBox(_T("文件长度为零或者无法读取文件！！"));
+						CClientController::getInstance()->DownloadEnd();
+						break;
+					}
+				}
+				else if (length > 0 && (index >= length)) {
+					fclose((FILE*)lParam);
+					length = 0;
+					index = 0;
+					CClientController::getInstance()->DownloadEnd();
+				}
+				else {
+					FILE* pFile = (FILE*)lParam;
+					fwrite(head.strData.c_str(),1, head.strData.size(), pFile);
+					index += head.strData.size();
+				}
+			}
+			case 9:
+				TRACE("delete file done!\r\n");
+				break;
+			case 1981:
+				TRACE("test connection success!\r\n");
+				break;
+			default:
+				TRACE("unknow data received! %d\r\n",head.sCmd);
+				break;
+			}
+		}
+	}
+	return 0;
 }

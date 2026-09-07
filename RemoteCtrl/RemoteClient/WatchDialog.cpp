@@ -42,6 +42,7 @@ BEGIN_MESSAGE_MAP(CWatchDialog, CDialog)
 	ON_WM_MOUSEMOVE()
 	ON_BN_CLICKED(IDC_BTN_LOCK, &CWatchDialog::OnBnClickedBtnLock)
 	ON_BN_CLICKED(IDC_BTN_UNLOCK, &CWatchDialog::OnBnClickedBtnUnlock)
+	ON_MESSAGE(WM_SEND_PACK_ACK, &CWatchDialog::OnSendPacketAck)
 END_MESSAGE_MAP()
 
 
@@ -90,7 +91,7 @@ BOOL CWatchDialog::OnInitDialog()
 	//m_picture.MoveWindow(0, 0, 2560, 1600);
 
 	m_isFull = false;
-	SetTimer(0, 300,NULL);
+	//SetTimer(0, 300,NULL);
 
 
 
@@ -101,25 +102,25 @@ BOOL CWatchDialog::OnInitDialog()
 void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 {
 	 //TODO: 在此添加消息处理程序代码和/或调用默认值
-	if (nIDEvent == 0) {
-		CClientController* pParent = CClientController::getInstance();
-		if (m_isFull) {
+	//if (nIDEvent == 0) {
+	//	CClientController* pParent = CClientController::getInstance();
+	//	if (m_isFull) {
 
-			CRect rect;
-			m_picture.GetWindowRect(rect);
-			m_nObjWidth = m_image.GetWidth();
-			m_nObjHeight = m_image.GetHeight();
+	//		CRect rect;
+	//		m_picture.GetWindowRect(rect);
+	//		m_nObjWidth = m_image.GetWidth();
+	//		m_nObjHeight = m_image.GetHeight();
 
-			m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc(),
-				0, 0,rect.Width(), rect.Height(), SRCCOPY);
-			m_picture.InvalidateRect(NULL);
+	//		m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc(),
+	//			0, 0,rect.Width(), rect.Height(), SRCCOPY);
+	//		m_picture.InvalidateRect(NULL);
 
 
-			m_image.Destroy();
-			m_isFull=false;
+	//		m_image.Destroy();
+	//		m_isFull=false;
 
-		}
-	}
+	//	}
+	//}
 	CDialog::OnTimer(nIDEvent);
 
 	//if (nIDEvent == 0) {
@@ -150,6 +151,49 @@ void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 	//}
 	//CDialog::OnTimer(nIDEvent);
 
+}
+
+LRESULT CWatchDialog::OnSendPacketAck(WPARAM wParam, LPARAM lParam)
+{
+	if (lParam ==-1||(lParam==-2)) {
+
+	}
+	else if (lParam == 1) {
+			//对方关闭套接字
+	}
+	else {
+		CPacket* pPacket = (CPacket*)wParam;
+		if (pPacket != NULL) {
+			switch (pPacket->sCmd) {
+			case 6:
+			{
+				if (m_isFull) {
+					CEdoyunTool::Bytes2Image(m_image, pPacket->strData);
+					CRect rect;
+					m_picture.GetWindowRect(rect);
+					m_nObjWidth = m_image.GetWidth();
+					m_nObjHeight = m_image.GetHeight();
+
+					m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc(),
+						0, 0, rect.Width(), rect.Height(), SRCCOPY);
+					m_picture.InvalidateRect(NULL);
+
+					m_image.Destroy();
+					m_isFull = false;
+				}
+				break;
+			}
+				
+			case 5:
+			case 7:
+			case 8:
+				break;
+			
+			}
+		}
+	}
+
+	return 0;
 }
 
 void CWatchDialog::OnStnClickedWatch1()

@@ -54,10 +54,18 @@ LRESULT CClientController::SendMessage(MSG msg)
 }
 
 
-bool CClientController::SendCommandPacket(HWND hWnd,int nCmd, bool bAutoClose, BYTE* pData, size_t nLength)
+bool CClientController::SendCommandPacket(HWND hWnd,int nCmd, bool bAutoClose, 
+	BYTE* pData, size_t nLength, WPARAM wParam)
 {
 		ClientSocket* pClient = ClientSocket::getInstance();
-		return pClient->SendPacket(hWnd,CPacket(nCmd, pData, nLength),bAutoClose);
+		return pClient->SendPacket(hWnd,CPacket(nCmd, pData, nLength),bAutoClose, wParam);
+}
+
+void CClientController::DownloadEnd()
+{
+	m_statusDlg.ShowWindow(SW_HIDE);
+	m_remoteDlg.EndWaitCursor();
+	m_remoteDlg.MessageBox(_T("文件下载完成！！"));
 }
 
 int CClientController::DownFile(CString strPath)
@@ -68,11 +76,20 @@ int CClientController::DownFile(CString strPath)
 	if (dlg.DoModal() == IDOK) {
 		m_strRemote = strPath;
 		m_strLocal = dlg.GetPathName();
-		m_hThreadDownload = (HANDLE)_beginthread(&CClientController::threadDownloadEntry, 0, this);
-
-		if (WaitForSingleObject(m_hThreadDownload, 0) != WAIT_TIMEOUT) {
+		FILE* pFile = fopen(m_strLocal, "wb+");
+		if (pFile == NULL) {
+			AfxMessageBox(_T("文件无法创建！！"));
+			//m_statusDlg.ShowWindow(SW_HIDE);
+			//m_remoteDlg.EndWaitCursor();
 			return -1;
 		}
+		int ret = SendCommandPacket(m_remoteDlg, 4, false, (BYTE*)(LPCTSTR)m_strRemote,
+			m_strRemote.GetLength(), (WPARAM)pFile);
+		//m_hThreadDownload = (HANDLE)_beginthread(&CClientController::threadDownloadEntry, 0, this);
+
+		//if (WaitForSingleObject(m_hThreadDownload, 0) != WAIT_TIMEOUT) {
+		//	return -1;
+		//}
 		m_remoteDlg.BeginWaitCursor();
 
 		m_statusDlg.m_info.SetWindowText(_T("命令正在执行中！！"));
@@ -146,7 +163,7 @@ void CClientController::threadDownloadFile()
 	ClientSocket* pClient = ClientSocket::getInstance();
 	do {
 		int ret=SendCommandPacket(m_remoteDlg,4, false, (BYTE*)(LPCTSTR)m_strRemote,
-			m_strRemote.GetLength() );
+			m_strRemote.GetLength() ,(WPARAM)pFile);
 		long long nlength = *(long long*)pClient->GetPacket().strData.c_str();
 		if (nlength == 0) {
 			//AfxMessageBox(_T("文件长度为零或者无法读取文件！！"));
