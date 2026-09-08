@@ -164,11 +164,13 @@ LRESULT CWatchDialog::OnSendPacketAck(WPARAM wParam, LPARAM lParam)
 	else {
 		CPacket* pPacket = (CPacket*)wParam;
 		if (pPacket != NULL) {
-			switch (pPacket->sCmd) {
+			CPacket head = *(CPacket*)wParam;
+			delete (CPacket*)wParam;
+			switch (head.sCmd) {
 			case 6:
 			{
-				if (m_isFull) {
-					CEdoyunTool::Bytes2Image(m_image, pPacket->strData);
+				
+					CEdoyunTool::Bytes2Image(m_image, head.strData);
 					CRect rect;
 					m_picture.GetWindowRect(rect);
 					m_nObjWidth = m_image.GetWidth();
@@ -180,11 +182,13 @@ LRESULT CWatchDialog::OnSendPacketAck(WPARAM wParam, LPARAM lParam)
 
 					m_image.Destroy();
 					m_isFull = false;
-				}
+				
 				break;
 			}
 				
 			case 5:
+				TRACE("远程端应答鼠标操作\r\n");
+				break;
 			case 7:
 			case 8:
 				break;

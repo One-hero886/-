@@ -118,22 +118,20 @@ void CClientController::StartWatchScreen()
 
 void CClientController::threadWatchScreen()
 {
-	while (!m_isWatchClosed && !::IsWindow(m_watchDlg.m_hWnd)) {
-		Sleep(10);
-	}
-	//Sleep(50);
+	//while (!m_isWatchClosed && !::IsWindow(m_watchDlg.m_hWnd)) {
+	//	Sleep(10);
+	//}
+	Sleep(50);
+	ULONGLONG nTick = GetTickCount64();
 	while (!m_isWatchClosed) {
 		if (m_watchDlg.isFull() == false) {
-			std::list<CPacket> lstPacks;
+			if (GetTickCount64() - nTick < 200) {
+				Sleep(200-DWORD(GetTickCount64()-nTick));
+			}
+			nTick = GetTickCount64();
 			int ret = SendCommandPacket(m_watchDlg.GetSafeHwnd(), 6, true, NULL, 0 );
-			if (ret == 6) {
-				if (CEdoyunTool::Bytes2Image(m_watchDlg.GetImage(), lstPacks.front().strData) == 0) {
-					m_watchDlg.SetImageStatus(true);
-					TRACE("获取图片成功！\r\n");
-				}
-				else {
-					TRACE("获取图片失败！\r\n");
-				}
+			if (ret == 1) {
+				//TRACE("获取图片成功！\r\n");
 			}
 			else {
 						TRACE("获取图片失败！\r\n");

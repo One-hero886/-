@@ -619,7 +619,7 @@ LRESULT CRemoteClientDlg::OnSendPacketAck(WPARAM wParam, LPARAM lParam){
 				TRACE("unknow data received! %d\r\n",head.sCmd);
 				break;
 			}
-			delete pPacket;
+			
 		}
 	}
 	return 0;

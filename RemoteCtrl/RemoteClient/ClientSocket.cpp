@@ -199,7 +199,7 @@ void ClientSocket::threadFunc2()
 	while (::GetMessage(&msg, NULL, 0, 0)) {
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
-		TRACE("Get Message:%08X \r\n",msg.message);
+		//TRACE("Get Message:%08X \r\n",msg.message);
 		if (m_mapFunc.find(msg.message) != m_mapFunc.end()) {
 			(this->*m_mapFunc[msg.message])(msg.message, msg.wParam, msg.lParam);
 		}
@@ -238,8 +238,11 @@ bool ClientSocket::SendPacket(HWND hWnd, const CPacket& pack, bool isAutoClosed,
 	UINT nMode = isAutoClosed ? CSM_AUTOCLOSE : 0;
 	std::string strOut;
 	pack.Data(strOut);
-	bool ret= PostThreadMessage(m_hThreadID,WM_SEND_PACK,
-		(WPARAM)new PACKET_DATA(strOut.c_str(), strOut.size(),nMode,wParam), (LPARAM)hWnd);
+	PACKET_DATA* pData=new PACKET_DATA(strOut.c_str(), strOut.size(), nMode, wParam);
+	bool ret= PostThreadMessage(m_hThreadID,WM_SEND_PACK,(WPARAM)pData, (LPARAM)hWnd);
+	if (ret == false) {
+		delete pData;
+	}
 	return ret;
 }	
 
