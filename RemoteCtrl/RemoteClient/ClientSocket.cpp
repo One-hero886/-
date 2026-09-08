@@ -297,6 +297,10 @@ void ClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 	PACKET_DATA data = *(PACKET_DATA*)wParam;
 	delete (PACKET_DATA*)wParam;
 	HWND hWnd = (HWND)lParam;
+
+	size_t nTemp = data.strData.size();
+	CPacket current((BYTE*)data.strData.c_str(),nTemp);
+
 	if (InitSocket() == TRUE) {
 		
 		int ret = send(m_sock, (char*)data.strData.c_str(), (int)data.strData.size(), 0);
@@ -317,15 +321,16 @@ void ClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 							CloseSocket();
 							return;
 						}
-
+						index -= nLen;
+						//memmove(pBuffer,pBuffer+index,nLen);
+						memmove(pBuffer, pBuffer + nLen, index);
 					} 
-					index -= nLen;
-					memmove(pBuffer,pBuffer+index,nLen);
+
 
 				}
 				else {
 					CloseSocket();
-					::SendMessage(hWnd, WM_SEND_PACK_ACK, NULL, 1);
+					::SendMessage(hWnd, WM_SEND_PACK_ACK, (WPARAM)new CPacket(current.sCmd,NULL,0), 1);
 				}
 			}
 			

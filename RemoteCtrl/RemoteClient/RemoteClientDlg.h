@@ -26,7 +26,7 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 public:
 
-
+	void LoadFileInfo();
 private:
 
 	
@@ -34,7 +34,7 @@ private:
 	bool m_isWatchClosed;
 private:
 
-	void LoadFileInfo();
+	//void LoadFileInfo();
 	void LoadFileInfo1();
 	void LoadFileCurrent();
 	CString GetPath(HTREEITEM hTree);
