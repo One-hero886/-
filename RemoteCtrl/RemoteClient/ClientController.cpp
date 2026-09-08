@@ -40,18 +40,7 @@ int CClientController::InitController() {
 	return 0;
 }
 
-LRESULT CClientController::SendMessage(MSG msg)
-{
-	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (hEvent == NULL)return -2;
-	MSGINFO info(msg);
-	PostThreadMessage(m_nThreadID, WM_SEND_MESSAGE,
-		(WPARAM)&msg, (LPARAM)hEvent);
 
-	WaitForSingleObject(hEvent, INFINITE);
-	CloseHandle(hEvent);
-	return info.result;
-}
 
 
 bool CClientController::SendCommandPacket(HWND hWnd,int nCmd, bool bAutoClose, 
@@ -146,51 +135,6 @@ void CClientController::threadWatchScreen(void* arg)
 	_endthread();
 }
 
-void CClientController::threadDownloadFile()
-{
-	FILE* pFile = fopen(m_strLocal, "wb+");
-	if (pFile == NULL) {
-		AfxMessageBox(_T("文件无法创建！！"));
-		m_statusDlg.ShowWindow(SW_HIDE);
-		m_remoteDlg.EndWaitCursor();
-		return;
-	}
-	ClientSocket* pClient = ClientSocket::getInstance();
-	do {
-		int ret=SendCommandPacket(m_remoteDlg,4, false, (BYTE*)(LPCTSTR)m_strRemote,
-			m_strRemote.GetLength() ,(WPARAM)pFile);
-		long long nlength = *(long long*)pClient->GetPacket().strData.c_str();
-		if (nlength == 0) {
-			AfxMessageBox("文件长度为零或者无法读取文件！！");
-			break;
-		}
-		long long nCount = 0;
-		while (nCount < nlength) {
-			ret = pClient->DealCommand();
-			if (ret < 0) {
-				AfxMessageBox(_T("传输失败！！"));
-				TRACE(_T("传输失败:ret=%d\r\n"), ret);
-				break;
-			}
-			fwrite(pClient->GetPacket().strData.c_str(), 1, pClient->GetPacket().strData.size(), pFile);
-			nCount += pClient->GetPacket().strData.size();
-		}
-	} while (false);
-	fclose(pFile);
-	pClient->CloseSocket();
-	m_statusDlg.ShowWindow(SW_HIDE);
-	m_remoteDlg.EndWaitCursor();
-	m_remoteDlg.MessageBox(_T("文件下载完成！！"));
-
-	m_remoteDlg.LoadFileInfo();
-}
-
-void _stdcall CClientController::threadDownloadEntry(void* arg)
-{
-	CClientController* thiz = (CClientController*)arg;
-	thiz->threadDownloadFile();
-	_endthread();
-}
 
 void CClientController::threadFunc() {
 	MSG msg;

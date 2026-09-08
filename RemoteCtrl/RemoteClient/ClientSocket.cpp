@@ -319,7 +319,7 @@ void ClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 						::SendMessage(hWnd, WM_SEND_PACK_ACK, (WPARAM)new CPacket(pack), data.wParam);
 						if (data.nMode & CSM_AUTOCLOSE) {
 							CloseSocket();
-							return;
+							return; 
 						}
 						index -= nLen;
 						//memmove(pBuffer,pBuffer+index,nLen);
