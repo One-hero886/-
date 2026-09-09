@@ -85,11 +85,12 @@ void ChooseAutoInvoke() {
 void ShowError() {
     LPWSTR lpMessageBuf=NULL;
     //strerror(errno);//标准C语言库
-    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
+    FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
         NULL,GetLastError(),
         MAKELANGID(LANG_NEUTRAL,SUBLANG_DEFAULT),
         (LPWSTR)&lpMessageBuf,0,NULL);
-    OutputDebugString(lpMessageBuf);
+    OutputDebugStringW(lpMessageBuf);
+    //MessageBoxW(NULL, lpMessageBuf, L"fasheng错误", 0);
     LocalFree(lpMessageBuf);
     
 }
@@ -113,14 +114,73 @@ bool IsAdmin() {
     printf("length of tokeninformation is %d\r\n",len);
     return false;
 }
+void RunAsAdmin() {
+   HANDLE hToken = NULL;
+   bool ret= LogonUser("Administrator",NULL,NULL,LOGON32_LOGON_INTERACTIVE,LOGON32_PROVIDER_DEFAULT,&hToken);
+   if (!ret) {
+       ShowError();
+       MessageBox(NULL,_T("登陆错误！"),_T("程序错误"),0);
+       ::exit(0);
+   }
+
+   OutputDebugString("Logon administrator success!\r\n");
+   //STARTUPINFOW si = {0};
+   //PROCESS_INFORMATION pi = { 0 };
+   //TCHAR sPath[MAX_PATH] = _T("");
+   //GetCurrentDirectory(MAX_PATH, sPath);
+   //CString strCmd = sPath;
+   //strCmd += _T("\\RemoteCtrl.exe");
+   ////ret=CreateProcessWithTokenW(hToken,LOGON_WITH_PROFILE,NULL, (LPWSTR)(LPCWSTR)strCmd,
+   //    //CREATE_UNICODE_ENVIRONMENT,NULL,NULL,&si,&pi);
+   //ret = CreateProcessWithLogonW(L"Administrator", NULL,NULL,LOGON_WITH_PROFILE, NULL, (LPWSTR)(LPCWSTR)strCmd.GetBuffer(),
+   //    CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi);
+   STARTUPINFOW si = { sizeof(si) };
+   PROCESS_INFORMATION pi = { 0 };
+
+   // 1. 获取当前程序自身的绝对路径（避免工作目录不一致的问题）
+   WCHAR szModulePath[MAX_PATH] = { 0 };
+   GetModuleFileNameW(NULL, szModulePath, MAX_PATH);
+
+   // 去掉自身文件名，截取出真实目录
+   WCHAR* pSlash = wcsrchr(szModulePath, L'\\');
+   if (pSlash) {
+       *pSlash = L'\0';
+   }
+
+   // 2. 强制使用 CStringW（确保每个字符都是 2 字节的宽字符）
+   CStringW strCmd;
+   strCmd.Format(L"\"%s\\RemoteCtrl.exe\"", szModulePath); // 加上双引号防止路径中包含空格导致解析中断
+
+   // 3. 传入宽字符缓冲区
+   ret = CreateProcessWithLogonW(
+       L"Administrator",
+       NULL,
+       NULL,
+       LOGON_WITH_PROFILE,
+       NULL,
+       strCmd.GetBuffer(), // CStringW 的 GetBuffer() 返回合法的 LPWSTR
+       CREATE_UNICODE_ENVIRONMENT,
+       NULL,
+       szModulePath,       // 显式指定子进程的工作目录为 exe 所在目录
+       &si,
+       &pi
+   );
+   strCmd.ReleaseBuffer();
+   CloseHandle(hToken); 
+   if (!ret) {
+       ShowError();
+       MessageBox(NULL,_T("创建进程失败"),_T("程序错误"),0);
+       ::exit(0);
+   }
+   WaitForSingleObject(pi.hProcess, INFINITE);
+
+   CloseHandle(pi.hProcess);
+   CloseHandle(pi.hThread);
+}
 int main()
  {
-    if (IsAdmin()) {
-       OutputDebugString("current is run as administrator!\r\n");
-    }
-    else {
-        OutputDebugString("current is run as normal user!\r\n");
-    }
+
+
      int nRetCode = 0;
 
     HMODULE hModule = ::GetModuleHandle(nullptr);
@@ -136,6 +196,17 @@ int main()
         }
         else
         {
+            if (IsAdmin()) {
+                OutputDebugString("current is run as administrator!\r\n");
+                //MessageBox(NULL, _T("管理员"), _T("用户状态"), 0);
+            }
+            else {
+                OutputDebugString("current is run as normal user!\r\n");
+                RunAsAdmin();
+                //MessageBox(NULL, _T("普通用户"), _T("用户状态"), 0);
+                return nRetCode;
+            }
+
             CCommand cmd;
             ChooseAutoInvoke();
 			int ret= CServerSocket::getInstance()->Run(CCommand::RunCommand,&cmd);
