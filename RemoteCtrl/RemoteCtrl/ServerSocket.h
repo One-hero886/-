@@ -10,7 +10,7 @@ class CServerSocket
 {
 public:
 	static CServerSocket* getInstance() {
-		if (m_instance == NULL) {
+		if (m_instance == NULL) { 
 			m_instance = new CServerSocket();
 		}
 		return m_instance;
