@@ -32,17 +32,21 @@ public:
 		m_hCompeletionPort= CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 1);
 		m_hThread = INVALID_HANDLE_VALUE;
 		if (m_hCompeletionPort != NULL) {
-			m_hThread = (HANDLE)_beginthread(&CEdoyunQueue<T>::threadEntry, 0, m_hCompeletionPort);
+			m_hThread = (HANDLE)_beginthread(&CEdoyunQueue<T>::threadEntry, 0, this);
 		}
 	}
 	~CEdoyunQueue() {
 		if (m_lock)return;
 		m_lock = true;
-		HANDLE hTemp = m_hCompeletionPort;
+		
 		PostQueuedCompletionStatus(m_hCompeletionPort, 0,NULL ,NULL);
 		WaitForSingleObject(m_hThread, INFINITE);
-		m_hCompeletionPort = NULL;
-		CloseHandle(hTemp);
+		
+		if (m_hCompeletionPort != NULL){
+			HANDLE hTemp = m_hCompeletionPort;
+			m_hCompeletionPort = NULL;
+			CloseHandle(hTemp);
+		}
 	}
 	bool PushBack(const T& data) {
 		IocpParam* pParam = new IocpParam(EQPush, data);
@@ -52,6 +56,7 @@ public:
 		}
 		bool ret=PostQueuedCompletionStatus(m_hCompeletionPort,sizeof(PPARAM),(ULONG_PTR)pParam,NULL);
 		if (ret == false)delete pParam;
+		//printf("push back done %d %08p!\r\n", ret, (void*)pParam);
 		return ret;
 	}
 	bool PopFront(T& data) {
@@ -98,6 +103,7 @@ public:
 		IocpParam* pParam = new IocpParam(EQClear, T());
 		bool ret = PostQueuedCompletionStatus(m_hCompeletionPort, sizeof(PPARAM), (ULONG_PTR)pParam, NULL);
 		if (ret == false)delete pParam;
+		//printf("delete %08p\r\n", (void*)pParam);
 		return ret;
 	}
 private:
@@ -112,6 +118,7 @@ private:
 		case EQPush:
 			m_lstData.push_back(pParam->Data);
 			delete pParam;
+			//printf("delete %08p\r\n",(void*)pParam);
 			break;
 		case EQPop:
 			if (m_lstData.size() > 0) {
@@ -131,6 +138,7 @@ private:
 		case EQClear:
 			m_lstData.clear();
 			delete pParam;
+			//printf("Clear %08p\r\n", (void*)pParam);
 			break;
 		default:
 			OutputDebugString("unknown operator!\r\n");
@@ -158,10 +166,13 @@ private:
 				printf("thread is prepare to exit!\r\n");
 				continue;
 			}
+
 			pParam = (PPARAM*)CompletionKey;
 			DealParam(pParam);
 		}
-		CloseHandle(m_hCompeletionPort);
+		HANDLE hTemp = m_hCompeletionPort;
+		CloseHandle(hTemp);
+		m_hCompeletionPort = NULL;
 	}
 
 private:
