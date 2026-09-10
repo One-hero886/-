@@ -191,7 +191,6 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CEdoyunQueue.h" />
     <ClInclude Include="ClientController.h" />
     <ClInclude Include="ClientSocket.h" />
     <ClInclude Include="EdoyunTool.h" />
@@ -205,7 +204,6 @@
     <ClInclude Include="WatchDialog.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CEdoyunQueue.cpp" />
     <ClCompile Include="ClientController.cpp" />
     <ClCompile Include="ClientSocket.cpp" />
     <ClCompile Include="pch.cpp">
