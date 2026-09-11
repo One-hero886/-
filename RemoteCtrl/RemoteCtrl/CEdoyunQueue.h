@@ -1,6 +1,7 @@
 #pragma once
 #include "pch.h"
 #include <atomic>
+#include<list>
 template<class T>
 class CEdoyunQueue
 {//线程安全队列（利用IOCP实现）

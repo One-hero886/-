@@ -8,6 +8,8 @@
 #include "framework.h"
 #include<conio.h>
 #include "CEdoyunQueue.h"
+#include <MSWSock.h>
+#include"EdoyunServer.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -45,103 +47,71 @@ bool ChooseAutoInvoke(const CString& strPath) {
     }
     return true;
 }
-#define IPCP_LIST_EMPTY 0
-#define IPCP_LIST_PUSH 1
-#define IPCP_LIST_POP 2
 
-enum {
-    IocpListEmpty,
-    IocpListPush,
-    IocpListPop,
+class COverlapped {
+public:
+    OVERLAPPED m_overlapped;
+    DWORD m_operator;
+    char m_buffer[4096];
+    COverlapped() {
+        m_operator = 0;
+        memset(&m_overlapped, 0, sizeof(m_overlapped));
+        memset(m_buffer, 0, sizeof(m_buffer));
+    }
 };
-typedef struct IocpParam {
-    int nOperator;//操作
-    std::string strData;//数据
-    _beginthread_proc_type cbFunc;//回调
-    IocpParam(int op, const char* sData,_beginthread_proc_type cb=NULL) {
-        nOperator = op;
-        strData = sData;
-        cbFunc = cb;
-    }
-    IocpParam() {
-        nOperator = -1;
-    }
+void iocp() {
+    EdoyunServer server;
+    server.StartServer();
+    getchar();
+    //SOCKET sock = WSASocket(AF_INET,SOCK_STREAM,0,NULL,0,WSA_FLAG_OVERLAPPED);
+    //if (sock == INVALID_SOCKET) {
+    //    CEdoyunTool::ShowError();
+    //    return;
+    //}
+    //HANDLE hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE,NULL,sock,4);
+    //SOCKET client = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+    //CreateIoCompletionPort((HANDLE)sock,hIOCP,0,0);
+    //sockaddr_in addr;
+    //addr.sin_family = PF_INET;
+    //addr.sin_addr.s_addr = inet_addr("0.0.0.0");
+    //addr.sin_port = htons(8080);
+    //bind(sock,(sockaddr*)&addr,sizeof(addr));
+    //listen(sock, 5);
 
-}IOCP_PARAM;
+    //COverlapped overlapped;
+    //overlapped.m_operator = 1;//accpet
 
-void threadmain(HANDLE hIOCP) {
-    std::list<std::string> lstString;
-    DWORD dwTransferred = 0;
-    ULONG_PTR CompletionKey = 0;
-    OVERLAPPED* pOverlapped = NULL;
-    while (GetQueuedCompletionStatus(hIOCP, &dwTransferred, &CompletionKey, &pOverlapped, INFINITE)) {
-        if ((dwTransferred == 0) || (CompletionKey == NULL)) {
-            printf("thread is prepare to exit!\r\n");
-            break;
-        }
-        IOCP_PARAM* pParam = (IOCP_PARAM*)CompletionKey;
-        if (pParam->nOperator == IocpListPush) {
-            lstString.push_back(pParam->strData);
-        }
-        else if (pParam->nOperator == IocpListPop) {
-            std::string* pStr = NULL;
-            if (lstString.size() > 0) {
-                pStr = new std::string(lstString.front());
-                lstString.pop_front();
-            }
-            if (pParam->cbFunc) {
-                pParam->cbFunc(pStr);
-            }
-        }
-        else if (pParam->nOperator == IocpListEmpty) {
-            lstString.clear();
-        }
-        delete pParam;
-    }
-}
-void threadQueueEntry(HANDLE hIOCP){
+    //memset(&overlapped, 0, sizeof(OVERLAPPED));
+    //char buffer[4096] = "";
+    //DWORD received = 0;
+    //if (AcceptEx(sock, client, buffer, 0, sizeof(sockaddr_in) + 16,
+    //    sizeof(sockaddr_in) + 16, &received, &overlapped.m_overlapped) == FALSE) {
+    //    CEdoyunTool::ShowError();
+    //}
 
-    threadmain(hIOCP);
-    _endthread();//代码到此为止，会导致本地对象无法调用析构，从而使得内存发送泄露
-}
+    ////开启线程
+    //while (true) {//代表一个线程
+    //    LPOVERLAPPED pOverlapped = NULL;
+    //    DWORD transferred = 0;
+    //    DWORD key = 0;
+    //    if(GetQueuedCompletionStatus(hIOCP,&transferred, &key, &pOverlapped, INFINITY)) {
+    //         
+    //        switch () {
+    //        case 0:
+    //           
 
-void func(void* arg) {
-    std::string* pstr = (std::string*)arg;
-    if (pstr != NULL) {
-         printf("pop from list:%s!\r\n", pstr);
-         delete pstr;
-    }
-    else {
-        printf("list is empty,no data!\r\n");
-    }
-    
+    //        
+    //        }
+
+    //    }
+    //}
+   
 }
 int main()
 {
     if (!CEdoyunTool::Init())return 1;
 
-    printf("press any key to exit ...\r\n");
-    CEdoyunQueue<std::string> lstStrings;
-    ULONGLONG tick0 = GetTickCount64(), tick = GetTickCount64();
-    while (_kbhit() == 0) {
-        if (GetTickCount64() - tick0 > 1300) {
-            lstStrings.PushBack("hello world");
-            tick0 = GetTickCount64();
-        }
-        if (GetTickCount64() - tick > 2000) {
-            std::string str;
-
-            lstStrings.PopFront(str);
-            tick = GetTickCount64();
-            printf("pop from queue:%s!\r\n",str.c_str());
-        }
-        Sleep(1);
-    }
-
-    printf("exit done!size %d\r\n", lstStrings.Size());
-    lstStrings.Clear();
-    printf("exit done!size %d\r\n", lstStrings.Size());
-    ::exit(0);
+    iocp();
     /*
     if (CEdoyunTool::IsAdmin()) {
         if (!CEdoyunTool::Init())return 1;
