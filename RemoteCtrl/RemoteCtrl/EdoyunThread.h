@@ -43,6 +43,7 @@ class EdoyunThread
 public:
 	EdoyunThread() {
 		m_hThread = NULL;
+		m_bStatus = false;
 	}
 	~EdoyunThread() {
 		Stop();
@@ -64,44 +65,55 @@ public:
 	bool Stop() {
 		if (m_bStatus == false)return true;
 		m_bStatus = false;
-		bool ret= WaitForSingleObject(m_hThread, INFINITE)==WAIT_OBJECT_0;
-		UpdateWorker();
-		return ret;
-	}
-	bool UpdateWorker(const ::ThreadWorker& worker=::ThreadWorker()) {
-		if (!worker.IsValid()) {
-			m_worker.store(NULL);
-			return -1;
+		DWORD ret= WaitForSingleObject(m_hThread, 1000);
+		if (ret == WAIT_TIMEOUT) {
+			TerminateThread(m_hThread, -1);
 		}
-		if (m_worker.load() != NULL) {
+		UpdateWorker();
+		return ret=WAIT_OBJECT_0;
+	}
+	void UpdateWorker(const ::ThreadWorker& worker=::ThreadWorker()) {
+		if (m_worker.load() != NULL&&(m_worker.load()!=&worker)) {
 			::ThreadWorker* pWorker = m_worker.load();
 			m_worker.store(NULL);
 			delete pWorker;
 		}
+		if (m_worker.load() == &worker)return;
+		if (!worker.IsValid()) {
+			m_worker.store(NULL);
+			return ;
+		}
+
 		m_worker.store(new ::ThreadWorker(worker));
 	}
 	//true 表示空闲 false表示已经分配工作
 	bool IsIdle() {
+		if (m_worker.load() == NULL)return true;
 		return !m_worker.load()->IsValid();
 	}
-protected:
-	
 	
 private:
 	void ThreadWorker() {
 		while (m_bStatus) {
+			if (m_worker.load() == NULL) {
+				Sleep(1);
+				continue;
+			}
 			::ThreadWorker worker = *m_worker.load();
 			if (worker.IsValid()) {
-				int ret = worker();
-				if (ret != 0) {
-					CStringA str;
-					str.Format(_T("thread found warning code %d\r\n"),ret);
-					OutputDebugString(str);
+				if (WaitForSingleObject(m_hThread, 0) == WAIT_TIMEOUT) {
+					int ret = worker();
+					if (ret != 0) {
+						CStringA str;
+						str.Format(_T("thread found warning code %d\r\n"),ret);
+						//OutputDebugString(str);
+					}
+					if (ret < 0) {
+						m_worker.store(NULL);
+						break;
+					}
 				}
-				if (ret < 0) {
-					m_worker.store(NULL);
-					break;
-				}
+				
 			}
 			
 		}
@@ -131,6 +143,10 @@ public:
 	EdoyunThreadPool() {}
 	~EdoyunThreadPool() {
 		Stop();
+		for (size_t i = 0; i < m_threads.size(); i++) {
+			delete m_threads[i];
+			m_threads[i] = NULL;
+		}
 		m_threads.clear();
 	}
 	bool Invoke() {

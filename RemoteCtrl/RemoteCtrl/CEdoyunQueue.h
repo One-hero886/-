@@ -2,6 +2,8 @@
 #include "pch.h"
 #include <atomic>
 #include<list>
+#include <vector>
+#include"EdoyunThread.h"
 template<class T>
 class CEdoyunQueue
 {//线程安全队列（利用IOCP实现）
@@ -36,7 +38,7 @@ public:
 			m_hThread = (HANDLE)_beginthread(&CEdoyunQueue<T>::threadEntry, 0, this);
 		}
 	}
-	~CEdoyunQueue() {
+	virtual ~CEdoyunQueue() {
 		if (m_lock)return;
 		m_lock = true;
 		
@@ -60,7 +62,7 @@ public:
 		//printf("push back done %d %08p!\r\n", ret, (void*)pParam);
 		return ret;
 	}
-	bool PopFront(T& data) {
+	virtual bool PopFront(T& data) {
 		if (m_lock)return false;
 		HANDLE hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
 		IocpParam pParam(EQPop, data, hEvent);
@@ -107,13 +109,13 @@ public:
 		//printf("delete %08p\r\n", (void*)pParam);
 		return ret;
 	}
-private:
+protected:
 	static void threadEntry(void* arg) {
 		CEdoyunQueue<T>* thiz = (CEdoyunQueue<T>*)arg;
 		thiz->threadMain();
 		_endthread();
 	}
-	void DealParam(PPARAM* pParam) {
+	virtual void DealParam(PPARAM* pParam) {
 		switch (pParam->nOperator)
 		{
 		case EQPush:
@@ -146,7 +148,7 @@ private:
 			break;
 		}
 	}
-	void threadMain() {
+	virtual void threadMain() {
 		DWORD dwTransferred = 0;
 		PPARAM* pParam = NULL;
 		ULONG_PTR CompletionKey = 0;
@@ -176,10 +178,92 @@ private:
 		m_hCompeletionPort = NULL;
 	}
 
-private:
+protected:
 	std::list<T>m_lstData;
 	HANDLE m_hCompeletionPort;
 	HANDLE m_hThread;
 	std::atomic<bool> m_lock;//队列正在析构
 };
 
+template<class T>
+class EdoyunSendQueue :public CEdoyunQueue<T>,public ThreadFuncBase
+{
+public:
+	typedef int (ThreadFuncBase::* EDYCALLBACK)(T& data);
+	EdoyunSendQueue(ThreadFuncBase* obj,EDYCALLBACK callback)
+		:CEdoyunQueue<T>(),m_base(obj),m_callback(callback)
+	{
+		m_thread.Start();
+		m_thread.UpdateWorker(::ThreadWorker(this, (FUNCTYPE)&EdoyunSendQueue<T>::threadTick));
+	}
+	virtual ~EdoyunSendQueue() {
+		
+		m_base = NULL;
+		m_callback = NULL;
+		m_thread.Stop();
+	}
+protected:
+	virtual bool PopFront(T& data) { 
+		return false; 
+	};
+	 bool PopFront() {
+		 typename CEdoyunQueue<T>::IocpParam* Param= new typename CEdoyunQueue<T>::IocpParam(CEdoyunQueue<T>::EQPop,T());
+		if (CEdoyunQueue<T>::m_lock) {
+			delete Param;
+			return false;
+		}
+		bool ret = PostQueuedCompletionStatus(CEdoyunQueue<T>::m_hCompeletionPort, sizeof(*Param), (ULONG_PTR)&Param, NULL);
+		if (ret == false) {
+			delete Param;
+			return false;
+		}
+
+		return ret;
+	}
+	int threadTick() {
+		if(WaitForSingleObject(CEdoyunQueue<T>::m_hThread, 0) != WAIT_TIMEOUT)return 0;
+		if (CEdoyunQueue<T>::m_lstData.size() > 0) {
+			PopFront();
+		}
+		
+		return 0;
+	}
+	virtual void DealParam(typename CEdoyunQueue<T>::PPARAM* pParam) {
+		switch (pParam->nOperator)
+		{
+		case CEdoyunQueue<T>::EQPush:
+			CEdoyunQueue<T>::m_lstData.push_back(pParam->Data);
+			delete pParam;
+			//printf("delete %08p\r\n",(void*)pParam);
+			break;
+		case CEdoyunQueue<T>::EQPop:
+			if (CEdoyunQueue<T>::m_lstData.size() > 0) {
+				pParam->Data = CEdoyunQueue<T>::m_lstData.front();
+				if ((m_base->*m_callback)(pParam->Data) == 0)
+					CEdoyunQueue<T>::m_lstData.pop_front();
+			}
+			delete pParam;
+			break;
+		case CEdoyunQueue<T>::EQSize:
+			pParam->nOperator = CEdoyunQueue<T>::m_lstData.size();
+			if (pParam->hEvent != NULL) {
+				SetEvent(pParam->hEvent);
+			}
+			break;
+		case CEdoyunQueue<T>::EQClear:
+			CEdoyunQueue<T>::m_lstData.clear();
+			delete pParam;
+			//printf("Clear %08p\r\n", (void*)pParam);
+			break;
+		default:
+			OutputDebugString("unknown operator!\r\n");
+			break;
+		}
+	}
+private:
+	ThreadFuncBase* m_base;
+	EDYCALLBACK m_callback;
+	EdoyunThread m_thread;
+};
+
+	typedef EdoyunSendQueue<std::vector<char>>::EDYCALLBACK SENDCALLBACK;
