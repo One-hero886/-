@@ -246,8 +246,8 @@ void CRemoteClientDlg::InitUIData()
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 	UpdateData();
-	//m_server_address = 0x7f000001;
-	m_server_address = 0xC0A8F383;//192.168.243.131
+	m_server_address = 0x7f000001;
+	//m_server_address = 0xC0A8F383;//192.168.243.131
 	m_nPort = _T("8080");
 
 	CClientController* pController = CClientController::getInstance();

@@ -15,15 +15,20 @@ AcceptOverlapped<op>::AcceptOverlapped()
 template<EdoyunOperator op>
 int AcceptOverlapped<op>::AcceptWorker() {
     INT lLength = 0, rLength = 0;
-    if (*(LPDWORD)*m_client > 0) {                
+    if (m_client->GetBufferSize() > 0) {
+        sockaddr* plocal = NULL, * premote = NULL;
         GetAcceptExSockaddrs(*m_client, 0,
             sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
-            (sockaddr**)m_client->GetLocalAddr(), &lLength,//本地地址
-            (sockaddr**)m_client->GetRemoteAddr(), &rLength//远程地址
+            (sockaddr**)&plocal, &lLength,//本地地址
+            (sockaddr**)&premote, &rLength//远程地址
         );
-        int ret=WSARecv((SOCKET)*m_client,m_client->RecvWSABuffer(), 1, *m_client, &m_client->flags(), *m_client, NULL);
+        memcpy(m_client->GetLocalAddr(),plocal,sizeof(sockaddr_in));
+        memcpy(m_client->GetRemoteAddr(), premote, sizeof(sockaddr_in));
+        m_server->BindNewSocket(*m_client);
+        int ret=WSARecv((SOCKET)*m_client,m_client->RecvWSABuffer(), 1, *m_client,
+            &m_client->flags(), m_client->RecvOverlapped(), NULL);
         if (ret == SOCKET_ERROR && (WSAGetLastError() != WSA_IO_PENDING)) {
-            
+            TRACE("ret =%d error=%d\r\n",ret,WSAGetLastError());
         }
         if (!m_server->NewAccept()) {
             return -2;
@@ -82,6 +87,7 @@ int EdoyunClient::Recv()
     int ret = recv(m_sock, m_buffer.data(), m_buffer.size() - m_used, 0);
     if (ret <= 0)return-1;
     m_used += (size_t)ret;
+    CEdoyunTool:: Dump((BYTE*)m_buffer.data(), ret);
     return 0;
 }
 
@@ -114,6 +120,7 @@ EdoyunServer::~EdoyunServer() {
     m_client.clear();
     CloseHandle(m_hIOCP);
     m_pool.Stop();
+    WSACleanup();
 }
 bool EdoyunServer::StartServer()
 {
@@ -143,36 +150,78 @@ bool EdoyunServer::StartServer()
         return true;
 }
 
+bool EdoyunServer::NewAccept()
+{
+        PCLIENT pClient(new EdoyunClient());
+        pClient->SetOverlapped(pClient);
+        m_client.insert(std::pair<SOCKET, PCLIENT>(*pClient, pClient));
+        if (!AcceptEx(m_sock, *pClient, *pClient, 0, sizeof(sockaddr_in) + 16,
+            sizeof(sockaddr_in) + 16, *pClient, *pClient)) {
+            TRACE("%d\r\n",WSAGetLastError());
+            if (WSAGetLastError() != WSA_IO_PENDING) {
+                closesocket(m_sock);
+                m_sock = INVALID_SOCKET;
+                m_hIOCP = INVALID_HANDLE_VALUE;
+                return false;
+            }
+        }
+        return true;
+}
+LPWSAOVERLAPPED EdoyunClient::SendOverlapped() {
+
+    return &m_send->m_overlapped;
+}
+LPWSAOVERLAPPED EdoyunClient::RecvOverlapped() {
+    return &m_recv->m_overlapped;
+}
+void EdoyunServer::BindNewSocket(SOCKET s)
+{
+    CreateIoCompletionPort((HANDLE)s,m_hIOCP,(ULONG_PTR)this,0);
+}
+
+void EdoyunServer::CreateSocket()
+{
+    WSADATA WSAData;
+    WSAStartup(MAKEWORD(2, 2), &WSAData);
+    m_sock = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+    int opt = 1;
+    setsockopt(m_sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
+}
+
 int EdoyunServer::threadIocp()
 {
     OVERLAPPED* lpOverlapped = NULL;
     DWORD transferred = 0;
     ULONG_PTR CompletionKey = 0;
     if (GetQueuedCompletionStatus(m_hIOCP, &transferred, &CompletionKey, &lpOverlapped, INFINITE)) {
-        EdoyunOverlapped* pOverlapped = CONTAINING_RECORD(lpOverlapped, EdoyunOverlapped, m_overlapped);
-        switch (pOverlapped->m_operator) {
-        case EAccept:
-        {
-            ACCEPTOVERLAPPED* pOver = (ACCEPTOVERLAPPED*)pOverlapped;
-            m_pool.DispatchWorker(pOver->m_worker);
-        }
-        case ERecv:
-        {
-            RECVOVERLAPPED* pOver = (RECVOVERLAPPED*)pOverlapped;
-            m_pool.DispatchWorker(pOver->m_worker);
-        }
-        case ESend:
-        {
-            SENDOVERLAPPED* pOver = (SENDOVERLAPPED*)pOverlapped;
-            m_pool.DispatchWorker(pOver->m_worker);
-        }
-        case EError:
-        {
-            ERROROVERLAPPED* pOver = (ERROROVERLAPPED*)pOverlapped;
-            m_pool.DispatchWorker(pOver->m_worker);
-        }
-        break;
+        if(CompletionKey!=0){
+            EdoyunOverlapped* pOverlapped = CONTAINING_RECORD(lpOverlapped, EdoyunOverlapped, m_overlapped);
+            TRACE(" pOverlapped->m_operator %d \r\n", pOverlapped->m_operator);
+            pOverlapped->m_server = this;
+            switch (pOverlapped->m_operator) {
+            case EAccept:
+            {
+                ACCEPTOVERLAPPED* pOver = (ACCEPTOVERLAPPED*)pOverlapped;
+                m_pool.DispatchWorker(pOver->m_worker);
+            }
+            case ERecv:
+            {
+                RECVOVERLAPPED* pOver = (RECVOVERLAPPED*)pOverlapped;
+                m_pool.DispatchWorker(pOver->m_worker);
+            }
+            case ESend:
+            {
+                SENDOVERLAPPED* pOver = (SENDOVERLAPPED*)pOverlapped;
+                m_pool.DispatchWorker(pOver->m_worker);
+            }
+            case EError:
+            {
+                ERROROVERLAPPED* pOver = (ERROROVERLAPPED*)pOverlapped;
+                m_pool.DispatchWorker(pOver->m_worker);
+            }
+            break;
 
+            }
         }
     }
     return true;
