@@ -108,6 +108,7 @@ void iocp() {
    
 }
 
+#include"ESocket.h"
 void udp_server();
 void udp_client(bool ishost=true);
 void initsock() {
@@ -119,44 +120,44 @@ void clearsock() {
 }
 int main(int argc,char* argv[])
 {
-    if (!CEdoyunTool::Init())return 1;
-    initsock();
-    if (argc == 1) {
-        char wstrDir[MAX_PATH];
-        GetCurrentDirectoryA(MAX_PATH, wstrDir);
-        STARTUPINFOA si;
-        PROCESS_INFORMATION pi;
-        memset(&si,0,sizeof(si));
-        memset(&pi, 0, sizeof(pi));
-        string strCmd = argv[0];
-        strCmd += " 1";
-        bool bRet=CreateProcessA(NULL,(LPSTR)strCmd.c_str(), NULL, NULL, FALSE, 0, NULL, wstrDir, &si, &pi);
-        if (bRet) {
-            CloseHandle(pi.hThread);
-            CloseHandle(pi.hProcess);
-            TRACE("进程ID：%d\r\n",pi.dwProcessId);
-            TRACE("线程ID：%d\r\n", pi.dwThreadId);
-            strCmd += " 2";
-            bool bRet = CreateProcessA(NULL,(LPSTR)strCmd.c_str(), NULL, NULL, FALSE, 0, NULL, wstrDir, &si, &pi);
-            if (bRet) {
-                CloseHandle(pi.hThread);
-                CloseHandle(pi.hProcess);
-                TRACE("进程ID：%d\r\n", pi.dwProcessId);
-                TRACE("线程ID：%d\r\n", pi.dwThreadId);
-                udp_server();//服务器代码
-            }
-        }
-    }
-    else if (argc == 2) {//主客户端
-        udp_client();
-    }
-    else {//从客户端
-        udp_client(false);
-    }
-    clearsock();
+    //if (!CEdoyunTool::Init())return 1;
+    //initsock();
+    //if (argc == 1) {
+    //    char wstrDir[MAX_PATH];
+    //    GetCurrentDirectoryA(MAX_PATH, wstrDir);
+    //    STARTUPINFOA si;
+    //    PROCESS_INFORMATION pi;
+    //    memset(&si,0,sizeof(si));
+    //    memset(&pi, 0, sizeof(pi));
+    //    string strCmd = argv[0];
+    //    strCmd += " 1";
+    //    bool bRet=CreateProcessA(NULL,(LPSTR)strCmd.c_str(), NULL, NULL, FALSE, 0, NULL, wstrDir, &si, &pi);
+    //    if (bRet) {
+    //        CloseHandle(pi.hThread);
+    //        CloseHandle(pi.hProcess);
+    //        TRACE("进程ID：%d\r\n",pi.dwProcessId);
+    //        TRACE("线程ID：%d\r\n", pi.dwThreadId);
+    //        strCmd += " 2";
+    //        bool bRet = CreateProcessA(NULL,(LPSTR)strCmd.c_str(), NULL, NULL, FALSE, 0, NULL, wstrDir, &si, &pi);
+    //        if (bRet) {
+    //            CloseHandle(pi.hThread);
+    //            CloseHandle(pi.hProcess);
+    //            TRACE("进程ID：%d\r\n", pi.dwProcessId);
+    //            TRACE("线程ID：%d\r\n", pi.dwThreadId);
+    //            udp_server();//服务器代码
+    //        }
+    //    }
+    //}
+    //else if (argc == 2) {//主客户端
+    //    udp_client();
+    //}
+    //else {//从客户端
+    //    udp_client(false);
+    //}
+    //clearsock();
 
-    //iocp();
-    /*
+    iocp();
+    
     if (CEdoyunTool::IsAdmin()) {
         if (!CEdoyunTool::Init())return 1;
         if (ChooseAutoInvoke(INVOKE_PATH)) {
@@ -182,48 +183,55 @@ int main(int argc,char* argv[])
             return -1;
         }
     }
-    */
+    
     return 0;
 }
-
+#include"ENetwork.h"
+int RecvFromCB(void* arg, const EBuffer& buffer, ESockaddrIn& addr) {
+    EServer* server = (EServer*)arg;
+    return server->Sendto(addr,buffer);
+}
+int SendToCB(void* arg, const ESockaddrIn& addr, int ret) {
+    EServer* server = (EServer*)arg;
+    printf("sendto done!%p\r\n", server);
+    return 0;
+}
 void udp_server() {
-   
+    EServerParameter param(
+        "127.0.0.1", 20000, ETYPE::ETypeUDP, NULL, NULL, NULL, RecvFromCB, SendToCB
+    );
+    EServer server(param);
+    server.Invoke(&server);
     printf("%s(%d):%s\r\n",__FILE__,__LINE__,__FUNCTION__);
-    SOCKET sock = socket(PF_INET,SOCK_DGRAM,0);
-    if(sock == INVALID_SOCKET) {
+    getchar();
+    ESOCKET sock(new ESocket(ETYPE::ETypeUDP));
+    if(*sock == INVALID_SOCKET) {
         printf("%s(%d):%sERROR!!!\r\n", __FILE__, __LINE__, __FUNCTION__);
         return;
     }
-    std::list<sockaddr_in> lstclients;
-    sockaddr_in server, client;
-    memset(&server, 0, sizeof(server));
-    memset(&client, 0, sizeof(client));
-    server.sin_family = AF_INET;
-    server.sin_port = htons(20000);
-    server.sin_addr.s_addr = inet_addr("127.0.0.1");
-    if (bind(sock, (sockaddr*)&server, sizeof(server))==-1) {
+    std::list<ESockaddrIn> lstclients;
+    ESockaddrIn client;
+    if (sock->bind("127.0.0.1",20000) == -1) {
         printf("%s(%d):%sERROR(%d)!!!\r\n", __FILE__, __LINE__, __FUNCTION__,WSAGetLastError());
-        closesocket(sock);
+        closesocket(*sock);
         return;
     }
-    std::string buf;
-    buf.resize(1024 * 256);
-    memset((char*)buf.c_str(), 0, buf.size());
+    EBuffer buf(1024 * 256);
     int len = sizeof(client);
     int ret = 0;
     while(!_kbhit()) {
-        ret = recvfrom(sock, (char*)buf.c_str(), buf.size(), 0, (sockaddr*)&client, &len);
+        ret = sock->recvfrom(buf,client);
         if (ret > 0) {
             if (lstclients.size()<=0) {
                 lstclients.push_back(client);
-                printf("%s(%d):%s ip %08x port %d\r\n", __FILE__, __LINE__, __FUNCTION__,
-                    client.sin_addr.s_addr, ntohs(client.sin_port));
-                ret = sendto(sock, buf.c_str(), ret, 0, (sockaddr*)&client, len);
+                printf("%s(%d):%s ip %s port %d\r\n", __FILE__, __LINE__, __FUNCTION__,
+                    client.Get_IP(), client.GetPort());
+                ret = sock->sendto(buf, client);
                 printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
             }
             else {
-                memcpy((void*)buf.c_str(), &lstclients.front(), sizeof(lstclients.front()));
-                ret = sendto(sock, buf.c_str(), sizeof(lstclients.front()), 0, (sockaddr*)&client, len);
+                buf.Update((void*)&lstclients.front(), lstclients.front().size());
+                ret = sock->sendto(buf, client);
                 printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
             }
         }
@@ -233,7 +241,7 @@ void udp_server() {
         }
     }
     Sleep(1);
-    closesocket(sock);
+    
     printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
     // CEdoyunTool::Dump((BYTE*)buf, ret);
 }
@@ -251,7 +259,7 @@ void udp_client(bool ishost) {
     }
     if (ishost) {//主客户端代码
         printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
-        std::string msg = "hello world!\n";
+         EBuffer msg="hello world!\n";
         int ret = sendto(sock, msg.c_str(), msg.size(), 0, (sockaddr*)&server, sizeof(server));
         if (ret > 0) {
             msg.resize(1024);

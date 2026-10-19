@@ -64,7 +64,7 @@ public:
     LPWSAOVERLAPPED SendOverlapped();
     DWORD& flags() { return m_flags; }
     sockaddr_in* GetLocalAddr() { return &m_laddr; }
-    sockaddr_in* GetRemoteAddr() { return &m_laddr; }
+    sockaddr_in* GetRemoteAddr() { return &m_raddr; }
     size_t GetBufferSize()const { return m_buffer.size(); }
     int Recv();
     int Send(void* buffer, size_t nSize);

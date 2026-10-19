@@ -212,7 +212,7 @@ protected:
 			delete Param;
 			return false;
 		}
-		bool ret = PostQueuedCompletionStatus(CEdoyunQueue<T>::m_hCompeletionPort, sizeof(*Param), (ULONG_PTR)&Param, NULL);
+		bool ret = PostQueuedCompletionStatus(CEdoyunQueue<T>::m_hCompeletionPort, sizeof(*Param), (ULONG_PTR)Param, NULL);
 		if (ret == false) {
 			delete Param;
 			return false;

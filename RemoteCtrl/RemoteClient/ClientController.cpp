@@ -1,3 +1,4 @@
+#include "ENetwork.h"
 #include "pch.h"
 #include "ClientController.h"
 #include"resource.h"
@@ -134,6 +135,8 @@ void CClientController::threadWatchScreen(void* arg)
 	thiz->threadWatchScreen();
 	_endthread();
 }
+
+
 
 
 void CClientController::threadFunc() {
